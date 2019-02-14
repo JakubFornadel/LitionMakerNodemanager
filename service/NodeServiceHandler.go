@@ -309,6 +309,14 @@ func (nsi *NodeServiceImpl) GetTransactionInfoHandler(w http.ResponseWriter, r *
 	}
 }
 
+func (nsi *NodeServiceImpl) DeleteTransactionPayloadHandler(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	response := nsi.deleteTransactionPayload(params["txn_hash"], nsi.Url)
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	json.NewEncoder(w).Encode(response)
+
+}
+
 func (nsi *NodeServiceImpl) GetLatestTransactionInfoHandler(w http.ResponseWriter, r *http.Request) {
 	count := r.FormValue("number")
 	response := nsi.getLatestTransactionInfo(count, nsi.Url)

@@ -361,6 +361,15 @@ func (ec *EthClient) GetQuorumPayload(input string) string {
 	return payload
 }
 
+func (ec *EthClient) DeleteQuorumPayload(input string) bool {
+	rpcClient := jsonrpc.NewClient(ec.Url)
+	_, err := rpcClient.Call("eth_deleteQuorumPayload", input)
+	if err != nil {
+		return false
+	}
+	return true
+}
+
 func (ec *EthClient) GetCode(address string) string {
 	rpcClient := jsonrpc.NewClient(ec.Url)
 	response, err := rpcClient.Call("eth_getCode", address, "latest")

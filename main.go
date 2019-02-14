@@ -57,6 +57,7 @@ func main() {
 
 	networkMapService := contractclient.NetworkMapContractClient{EthClient: client.EthClient{nodeUrl}}
 	router.HandleFunc("/txn/{txn_hash}", nodeService.GetTransactionInfoHandler).Methods("GET")
+	router.HandleFunc( "/rmpld/{txn_hash}", nodeService.DeleteTransactionPayloadHandler).Methods("GET")
 	router.HandleFunc("/txn", nodeService.GetLatestTransactionInfoHandler).Methods("GET")
 	router.HandleFunc("/block/{block_no}", nodeService.GetBlockInfoHandler).Methods("GET")
 	router.HandleFunc("/block", nodeService.GetLatestBlockInfoHandler).Methods("GET")

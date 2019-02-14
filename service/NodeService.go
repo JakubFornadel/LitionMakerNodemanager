@@ -582,6 +582,14 @@ func (nsi *NodeServiceImpl) getTransactionInfo(txno string, url string) Transact
 	return txResponse
 }
 
+func (nsi *NodeServiceImpl) deleteTransactionPayload(txno string, url string) bool {
+	var nodeUrl = url
+	ethClient := client.EthClient{nodeUrl}
+	txResponseClient := ethClient.GetTransactionByHash(txno)
+
+	return ethClient.DeleteQuorumPayload(txResponseClient.Input)
+}
+
 func (nsi *NodeServiceImpl) getTransactionReceipt(txno string, url string) TransactionReceiptResponse {
 	if txnMap[txno].TransactionHash == "" {
 		txResponse := populateTransactionObject(txno, url)

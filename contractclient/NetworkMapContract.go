@@ -1,8 +1,8 @@
 package contractclient
 
 import (
-	"github.com/synechron-finlabs/quorum-maker-nodemanager/client"
-	"github.com/synechron-finlabs/quorum-maker-nodemanager/contracthandler"
+	"github.com/ejossev/quorum-maker-nodemanager/client"
+	"github.com/ejossev/quorum-maker-nodemanager/contracthandler"
 )
 
 const registerNodeFunSig = "0x3072b1b2"

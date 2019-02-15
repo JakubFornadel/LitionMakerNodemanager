@@ -655,7 +655,7 @@ func populateTransactionObject(txno string, url string) TransactionReceiptRespon
 
 func decodeTransactionObject(txnDetails *TransactionReceiptResponse, url string) {
 	var quorumPayload string
-	var decoded bool
+	//var decoded bool
 
 	ethClient := client.EthClient{url}
 
@@ -686,7 +686,7 @@ func decodeTransactionObject(txnDetails *TransactionReceiptResponse, url string)
 			}
 			if functionDetails != "" {
 				txnDetails.FunctionDetails = functionDetails
-				decoded = true
+				//decoded = true
 			}
 		} else if txnDetails.TransactionType == "Public" && abiMap[txnDetails.To] != "" && abiMap[txnDetails.To] != "missing" {
 			decodedData, functionDetails := contractclient.ABIParser(txnDetails.To, abiMap[txnDetails.To], txnDetails.Input)
@@ -700,21 +700,21 @@ func decodeTransactionObject(txnDetails *TransactionReceiptResponse, url string)
 			}
 			if functionDetails != "" {
 				txnDetails.FunctionDetails = functionDetails
-				decoded = true
+				//decoded = true
 			}
 		} else if txnDetails.TransactionType == "Hash Only" {
 			var decodeFail DecodeFailure
 			decodeFail.Label = "Hash Only Transaction"
 			decodeFail.Type = "red"
 			txnDetails.DecodeFailed = decodeFail
-			decoded = true
+			//decoded = true
 		} else if abiMap[txnDetails.To] == "" {
 			if txnDetails.Input == "0x" && txnDetails.Value != 0 {
 				var decodeFail DecodeFailure
 				decodeFail.Label = "Ether Transfer"
 				decodeFail.Type = "yellow"
 				txnDetails.DecodeFailed = decodeFail
-				decoded = true
+				//decoded = true
 			} else {
 				var decodeFail DecodeFailure
 				decodeFail.Label = "Decode in Progress"

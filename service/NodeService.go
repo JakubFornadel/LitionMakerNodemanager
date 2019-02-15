@@ -655,7 +655,7 @@ func populateTransactionObject(txno string, url string) TransactionReceiptRespon
 
 func decodeTransactionObject(txnDetails *TransactionReceiptResponse, url string) {
 	var quorumPayload string
-	//var decoded bool
+	var decoded bool
 
 	ethClient := client.EthClient{url}
 

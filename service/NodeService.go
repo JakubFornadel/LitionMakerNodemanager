@@ -723,9 +723,9 @@ func decodeTransactionObject(txnDetails *TransactionReceiptResponse, url string)
 		}
 	}
 
-	if decoded {
-		txnMap[txnDetails.TransactionHash] = *txnDetails
-	}
+	//if decoded {
+	//	txnMap[txnDetails.TransactionHash] = *txnDetails
+	//}
 }
 
 func calculateTimeElapsed(txnDetails *TransactionReceiptResponse, url string) {

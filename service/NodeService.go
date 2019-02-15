@@ -591,16 +591,20 @@ func (nsi *NodeServiceImpl) deleteTransactionPayload(txno string, url string) bo
 }
 
 func (nsi *NodeServiceImpl) getTransactionReceipt(txno string, url string) TransactionReceiptResponse {
-	if txnMap[txno].TransactionHash == "" {
+	//if txnMap[txno].TransactionHash == "" {
+	    log.Println("getTransactionReceipt: called with params txno: " + txno +"; url: "+url)
 		txResponse := populateTransactionObject(txno, url)
+	    log.Println("getTransactionReceipt: populateTransactionObject returned ", txResponse)
 		decodeTransactionObject(&txResponse, url)
-		return txResponse
-	} else {
-		txnDetails := txnMap[txno]
-		calculateTimeElapsed(&txnDetails, url)
-		txnMap[txno] = txnDetails
-		return txnDetails
-	}
+	    log.Println("getTransactionReceipt: decodeTransactionObject returned ", txResponse)
+
+	    return txResponse
+	//} else {
+	//	txnDetails := txnMap[txno]
+	//	calculateTimeElapsed(&txnDetails, url)
+	//	txnMap[txno] = txnDetails
+	//	return txnDetails
+	//}
 }
 
 func populateTransactionObject(txno string, url string) TransactionReceiptResponse {
@@ -651,12 +655,14 @@ func populateTransactionObject(txno string, url string) TransactionReceiptRespon
 
 func decodeTransactionObject(txnDetails *TransactionReceiptResponse, url string) {
 	var quorumPayload string
-	var decoded bool
+	//var decoded bool
 
 	ethClient := client.EthClient{url}
 
 	if util.HexStringtoInt64(txnDetails.V) == 37 || util.HexStringtoInt64(txnDetails.V) == 38 {
+		log.Println("decodeTransactionObject: processing quorum private transaction, calling ethClient.GetQuorumPayload with param ", txnDetails.Input)
 		quorumPayload = ethClient.GetQuorumPayload(txnDetails.Input)
+		log.Println("decodeTransactionObject: ethClient.GetQuorumPayload returned ",  quorumPayload)
 		if quorumPayload == "0x" {
 			txnDetails.TransactionType = "Hash Only"
 		} else {

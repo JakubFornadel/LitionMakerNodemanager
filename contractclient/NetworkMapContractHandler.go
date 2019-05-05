@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/magiconair/properties"
-	"github.com/ejossev/quorum-maker-nodemanager/contracthandler"
-	"github.com/ejossev/quorum-maker-nodemanager/util"
+	"gitlab.com/lition/quorum-maker-nodemanager/contracthandler"
+	"gitlab.com/lition/quorum-maker-nodemanager/util"
 	"net/http"
 	"strconv"
 )

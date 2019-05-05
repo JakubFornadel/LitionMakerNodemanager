@@ -12,7 +12,7 @@ import (
 	"bytes"
 	"time"
 	"github.com/magiconair/properties"
-	"github.com/ejossev/quorum-maker-nodemanager/util"
+	"gitlab.com/lition/quorum-maker-nodemanager/util"
 	log "github.com/sirupsen/logrus"
 	"os"
 )

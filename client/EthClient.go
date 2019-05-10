@@ -2,7 +2,7 @@ package client
 
 import (
 	"fmt"
-	"github.com/ejossev/quorum-maker-nodemanager/contracthandler"
+	"gitlab.com/lition/quorum-maker-nodemanager/contracthandler"
 	"github.com/ybbus/jsonrpc"
 	"log"
 	"time"

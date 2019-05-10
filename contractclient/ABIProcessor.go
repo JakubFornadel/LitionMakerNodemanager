@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ejossev/quorum-maker-nodemanager/contracthandler"
+	"gitlab.com/lition/quorum-maker-nodemanager/contracthandler"
 	"strings"
 )
 

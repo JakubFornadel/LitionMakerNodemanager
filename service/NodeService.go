@@ -2,23 +2,24 @@ package service
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/magiconair/properties"
+	log "github.com/sirupsen/logrus"
 	"gitlab.com/lition/quorum-maker-nodemanager/client"
 	"gitlab.com/lition/quorum-maker-nodemanager/contractclient"
 	"gitlab.com/lition/quorum-maker-nodemanager/contracthandler"
 	"gitlab.com/lition/quorum-maker-nodemanager/util"
 	"gopkg.in/gomail.v2"
-	"io/ioutil"
-	"os"
-	"os/exec"
-	"regexp"
-	"strconv"
-	"strings"
-	"time"
-	log "github.com/sirupsen/logrus"
-	"path/filepath"
-	"encoding/json"
 )
 
 type ConnectionInfo struct {
@@ -85,7 +86,7 @@ type BlockDetailsResponse struct {
 
 type TransactionDetailsResponse struct {
 	BlockHash        string `json:"blockHash"`
-	BlockNumber      int64  `json:"blockNumber"`
+	BlockNumber      int64  `json:"blockNumbe"`
 	From             string `json:"from"`
 	Gas              int64  `json:"gas"`
 	GasPrice         int64  `json:"gasPrice"`
@@ -592,13 +593,13 @@ func (nsi *NodeServiceImpl) deleteTransactionPayload(txno string, url string) bo
 
 func (nsi *NodeServiceImpl) getTransactionReceipt(txno string, url string) TransactionReceiptResponse {
 	//if txnMap[txno].TransactionHash == "" {
-	    log.Println("getTransactionReceipt: called with params txno: " + txno +"; url: "+url)
-		txResponse := populateTransactionObject(txno, url)
-	    log.Println("getTransactionReceipt: populateTransactionObject returned ", txResponse)
-		decodeTransactionObject(&txResponse, url)
-	    log.Println("getTransactionReceipt: decodeTransactionObject returned ", txResponse)
+	log.Println("getTransactionReceipt: called with params txno: " + txno + "; url: " + url)
+	txResponse := populateTransactionObject(txno, url)
+	log.Println("getTransactionReceipt: populateTransactionObject returned ", txResponse)
+	decodeTransactionObject(&txResponse, url)
+	log.Println("getTransactionReceipt: decodeTransactionObject returned ", txResponse)
 
-	    return txResponse
+	return txResponse
 	//} else {
 	//	txnDetails := txnMap[txno]
 	//	calculateTimeElapsed(&txnDetails, url)
@@ -662,7 +663,7 @@ func decodeTransactionObject(txnDetails *TransactionReceiptResponse, url string)
 	if util.HexStringtoInt64(txnDetails.V) == 37 || util.HexStringtoInt64(txnDetails.V) == 38 {
 		log.Println("decodeTransactionObject: processing quorum private transaction, calling ethClient.GetQuorumPayload with param ", txnDetails.Input)
 		quorumPayload = ethClient.GetQuorumPayload(txnDetails.Input)
-		log.Println("decodeTransactionObject: ethClient.GetQuorumPayload returned ",  quorumPayload)
+		log.Println("decodeTransactionObject: ethClient.GetQuorumPayload returned ", quorumPayload)
 		if quorumPayload == "0x" {
 			txnDetails.TransactionType = "Hash Only"
 		} else {
@@ -843,7 +844,7 @@ func (nsi *NodeServiceImpl) deployContract(pubKeys []string, fileName []string, 
 			start = start + 2
 			if j != (len(contractBytecodesAll) - 1) {
 				delimiter := reEnd.FindStringIndex(bytecode)
-				thisContractBytecode = bytecode[start: delimiter[1]-1]
+				thisContractBytecode = bytecode[start : delimiter[1]-1]
 			} else {
 				thisContractBytecode = bytecode[start:]
 			}
@@ -894,7 +895,7 @@ func (nsi *NodeServiceImpl) deployContract(pubKeys []string, fileName []string, 
 			start = start + 2
 			if j != (len(contractABIAll) - 1) {
 				delimiter := reEnd.FindStringIndex(abiString)
-				thisContractABI = abiString[start: delimiter[1]-1]
+				thisContractABI = abiString[start : delimiter[1]-1]
 			} else {
 				thisContractABI = abiString[start:]
 			}

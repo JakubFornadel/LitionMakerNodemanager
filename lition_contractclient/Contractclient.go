@@ -44,7 +44,7 @@ func IsAllowedUser(chanIDStr string, userAddressStr string) bool {
 	}
 	userAddres := common.HexToAddress(userAddressStr)
 
-	canConnect, err := litionSC.HasDeposited(&bind.CallOpts{}, chanID, userAddres)
+	canConnect, err := litionSC.HasVested(&bind.CallOpts{}, chanID, userAddres)
 	if err != nil {
 		log.Error(fmt.Sprint("HasDeposited func error: ", err))
 		return false

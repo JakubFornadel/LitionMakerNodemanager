@@ -49,11 +49,11 @@ func Newlition(address common.Address, backend bind.ContractBackend) (*lition, e
 	return &lition{litionCaller: litionCaller{contract: contract}, litionTransactor: litionTransactor{contract: contract}, litionFilterer: litionFilterer{contract: contract}}, nil
 }
 
-func (_lition *litionCaller) HasDeposited(opts *bind.CallOpts, id *big.Int, user common.Address) (bool, error) {
+func (_lition *litionCaller) HasVested(opts *bind.CallOpts, id *big.Int, user common.Address) (bool, error) {
 	var (
 		ret0 = new(bool)
 	)
 	out := ret0
-	err := _lition.contract.Call(opts, out, "has_deposited", id, user)
+	err := _lition.contract.Call(opts, out, "has_vested", id, user)
 	return *ret0, err
 }

@@ -138,6 +138,9 @@ func (nsi *NodeServiceImpl) GetGenesisHandler(w http.ResponseWriter, r *http.Req
 	enode := request.EnodeID
 	foreignIP := request.IPAddress
 	nodename := request.Nodename
+	accPubKey := request.AccPubKey
+	chainID := request.ChainID
+
 	//recipients := strings.Split(mailServerConfig.RecipientList, ",")
 	if allowedIPs[foreignIP] {
 		peerMap[enode] = "YES"
@@ -163,9 +166,10 @@ func (nsi *NodeServiceImpl) GetGenesisHandler(w http.ResponseWriter, r *http.Req
 			}()
 		}
 	}
+
 	log.Info(fmt.Sprint("Join request received from node: ", nodename, " with IP: ", foreignIP, " and enode: ", enode))
-	// TODO: pass real chainID and userPublicKey
-	if peerMap[enode] == "YES" || litioncontractclient.IsAllowedUser("0x0", "0x86d7908c47be59cbdd8058749c5a96fb337c0937") {
+
+	if peerMap[enode] == "YES" || litioncontractclient.IsAllowedUser(chainID, accPubKey) {
 		response := nsi.getGenesis(nsi.Url)
 		json.NewEncoder(w).Encode(response)
 	} else if peerMap[enode] == "NO" {

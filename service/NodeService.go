@@ -54,6 +54,8 @@ type JoinNetworkRequest struct {
 	EnodeID   string `json:"enode-id,omitempty"`
 	IPAddress string `json:"ip-address,omitempty"`
 	Nodename  string `json:"nodename,omitempty"`
+	AccPubKey string `json:"acc-pub-key,omitempty"`
+	ChainID   string `json:"chain-id,omitempty"`
 }
 
 type GetGenesisResponse struct {

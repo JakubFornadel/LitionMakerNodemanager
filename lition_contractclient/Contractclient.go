@@ -42,9 +42,9 @@ func IsAllowedUser(chanIDStr string, userAddressStr string) bool {
 		log.Error(fmt.Sprint("Unable to convert ", chanIDStr, " into big.Int"))
 		return false
 	}
-	userAddres := common.HexToAddress(userAddressStr)
+	userAddress := common.HexToAddress(userAddressStr)
 
-	canConnect, err := litionSC.HasVested(&bind.CallOpts{}, chanID, userAddres)
+	canConnect, err := litionSC.HasVested(&bind.CallOpts{}, chanID, userAddress)
 	if err != nil {
 		log.Error(fmt.Sprint("HasDeposited func error: ", err))
 		return false

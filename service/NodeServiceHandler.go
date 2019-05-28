@@ -167,7 +167,7 @@ func (nsi *NodeServiceImpl) GetGenesisHandler(w http.ResponseWriter, r *http.Req
 		}
 	}
 
-	log.Info(fmt.Sprint("Join request received from node: ", nodename, " with IP: ", foreignIP, " and enode: ", enode))
+	log.Info(fmt.Sprint("Join request received from node: ", nodename, " with IP: ", foreignIP, ", enode: ", enode, ", accPubKey: ", accPubKey, " and chainID: ", chainID))
 
 	if peerMap[enode] == "YES" || litioncontractclient.IsAllowedUser(chainID, accPubKey) {
 		response := nsi.getGenesis(nsi.Url)

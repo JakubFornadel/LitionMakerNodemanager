@@ -1,20 +1,22 @@
 package service
 
 import (
-	"net/http"
+	"bytes"
 	"encoding/json"
-	"github.com/gorilla/mux"
 	"fmt"
-	"strconv"
-	"strings"
 	"io"
 	"io/ioutil"
-	"bytes"
-	"time"
-	"github.com/magiconair/properties"
-	"gitlab.com/lition/quorum-maker-nodemanager/util"
-	log "github.com/sirupsen/logrus"
+	"net/http"
 	"os"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/gorilla/mux"
+	"github.com/magiconair/properties"
+	log "github.com/sirupsen/logrus"
+	litioncontractclient "gitlab.com/lition/quorum-maker-nodemanager/lition_contractclient"
+	"gitlab.com/lition/quorum-maker-nodemanager/util"
 )
 
 type contractJSON struct {
@@ -77,7 +79,7 @@ func (nsi *NodeServiceImpl) UpdateWhitelistHandler(w http.ResponseWriter, r *htt
 	for _, ip := range ipList {
 		allowedIPs[ip] = true
 	}
-	whiteList = append(whiteList, ipList ...)
+	whiteList = append(whiteList, ipList...)
 	response := nsi.updateWhitelist(ipList)
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -136,6 +138,9 @@ func (nsi *NodeServiceImpl) GetGenesisHandler(w http.ResponseWriter, r *http.Req
 	enode := request.EnodeID
 	foreignIP := request.IPAddress
 	nodename := request.Nodename
+	accPubKey := request.AccPubKey
+	chainID := request.ChainID
+
 	//recipients := strings.Split(mailServerConfig.RecipientList, ",")
 	if allowedIPs[foreignIP] {
 		peerMap[enode] = "YES"
@@ -161,8 +166,10 @@ func (nsi *NodeServiceImpl) GetGenesisHandler(w http.ResponseWriter, r *http.Req
 			}()
 		}
 	}
-	log.Info(fmt.Sprint("Join request received from node: ", nodename, " with IP: ", foreignIP, " and enode: ", enode))
-	if peerMap[enode] == "YES" {
+
+	log.Info(fmt.Sprint("Join request received from node: ", nodename, " with IP: ", foreignIP, ", enode: ", enode, ", accPubKey: ", accPubKey, " and chainID: ", chainID))
+
+	if peerMap[enode] == "YES" || litioncontractclient.IsAllowedUser(chainID, accPubKey) {
 		response := nsi.getGenesis(nsi.Url)
 		json.NewEncoder(w).Encode(response)
 	} else if peerMap[enode] == "NO" {
@@ -251,7 +258,7 @@ func (nsi *NodeServiceImpl) JoinRequestResponseHandler(w http.ResponseWriter, r 
 	status := request.Status
 	response := nsi.joinRequestResponse(enode, status)
 	channelMap[enode] <- status
-	delete(channelMap, enode);
+	delete(channelMap, enode)
 	w.Header().Set("Access-Control-Allow-Methods", "OPTIONS, GET, POST")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Depth, User-Agent, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-Control")
 	w.Header().Set("Access-Control-Allow-Origin", "*")

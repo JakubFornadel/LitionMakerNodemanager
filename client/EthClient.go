@@ -2,10 +2,10 @@ package client
 
 import (
 	"fmt"
-	"gitlab.com/lition/quorum-maker-nodemanager/contracthandler"
-	"github.com/ybbus/jsonrpc"
-	"log"
 	"time"
+
+	"github.com/ybbus/jsonrpc"
+	"gitlab.com/lition/quorum-maker-nodemanager/contracthandler"
 )
 
 type AdminInfo struct {
@@ -227,31 +227,6 @@ func (ec *EthClient) Coinbase() string {
 		fmt.Println(err)
 	}
 	return coinbase
-}
-
-func (ec *EthClient) RaftRole() string {
-	rpcClient := jsonrpc.NewClient(ec.Url)
-	response, err := rpcClient.Call("raft_role")
-	if err != nil {
-		fmt.Println(err)
-	}
-	var raftRole string
-	err = response.GetObject(&raftRole)
-	if err != nil {
-		fmt.Println(err)
-	}
-	return raftRole
-}
-
-func (ec *EthClient) RaftAddPeer(request string) int {
-	rpcClient := jsonrpc.NewClient(ec.Url)
-	response, err := rpcClient.Call("raft_addPeer", request)
-	var raftId int
-	err = response.GetObject(&raftId)
-	if err != nil {
-		log.Println(err)
-	}
-	return raftId
 }
 
 func (ec *EthClient) GetTransactionReceipt(txNo string) TransactionReceiptResponse {

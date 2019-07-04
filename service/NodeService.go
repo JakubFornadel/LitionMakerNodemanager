@@ -276,6 +276,7 @@ var warning = 0
 var lastCrawledBlock = 0
 var mailServerConfig MailServerConfig
 
+//this should return enode also
 func (nsi *NodeServiceImpl) getGenesis(url string) (response GetGenesisResponse) {
 	var netId, constl string
 	existsA := util.PropertyExists("NETWORK_ID", "/home/setup.conf")
@@ -297,16 +298,17 @@ func (nsi *NodeServiceImpl) getGenesis(url string) (response GetGenesisResponse)
 }
 
 func (nsi *NodeServiceImpl) joinNetwork(enode string, url string) string {
-	var nodeUrl = url
-	ethClient := client.EthClient{nodeUrl}
-	raftId := ethClient.RaftAddPeer(enode)
+	// var nodeUrl = url
+	// ethClient := client.EthClient{nodeUrl}
+	// probably remove whole function
+
 	var contractAdd string
 	exists := util.PropertyExists("CONTRACT_ADD", "/home/setup.conf")
 	if exists != "" {
 		p := properties.MustLoadFile("/home/setup.conf", properties.UTF8)
 		contractAdd = util.MustGetString("CONTRACT_ADD", p)
 	}
-	collatedInfo := fmt.Sprint(raftId, ":", contractAdd)
+	collatedInfo := fmt.Sprint(contractAdd)
 	return collatedInfo
 }
 
@@ -936,7 +938,7 @@ func (nsi *NodeServiceImpl) deployContract(pubKeys []string, fileName []string, 
 	return contractJsonArr
 }
 
-func (nsi *NodeServiceImpl) createNetworkScriptCall(nodename string, currentIP string, rpcPort string, whisperPort string, constellationPort string, raftPort string, nodeManagerPort string) SuccessResponse {
+func (nsi *NodeServiceImpl) createNetworkScriptCall(nodename string, currentIP string, rpcPort string, whisperPort string, constellationPort string, nodeManagerPort string) SuccessResponse {
 	var successResponse SuccessResponse
 	cmd := exec.Command("./setup.sh", "1", nodename)
 	cmd.Dir = "./Setup"

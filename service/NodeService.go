@@ -1283,7 +1283,7 @@ func (nsi *NodeServiceImpl) RegisterNodeDetails(url string) {
 
 		enode := ethClient.AdminNodeInfo().ID
 		fromAddress := ethClient.Coinbase()
-		var ipAddr, nodename, pubKey, role, id, contractAdd string
+		var ipAddr, nodename, pubKey, role, contractAdd string
 		existsA := util.PropertyExists("CURRENT_IP", "/home/setup.conf")
 		existsB := util.PropertyExists("NODENAME", "/home/setup.conf")
 		existsC := util.PropertyExists("PUBKEY", "/home/setup.conf")
@@ -1302,7 +1302,7 @@ func (nsi *NodeServiceImpl) RegisterNodeDetails(url string) {
 		util.DeleteProperty("REGISTERED=", "/home/setup.conf")
 		util.DeleteProperty("ROLE=Unassigned", "/home/setup.conf")
 		nms := contractclient.NetworkMapContractClient{client.EthClient{url}, contracthandler.ContractParam{fromAddress, contractAdd, "", nil}}
-		nms.RegisterNode(nodename, role, pubKey, enode, ipAddr, id)
+		nms.RegisterNode(nodename, role, pubKey, enode, ipAddr)
 	}
 }
 

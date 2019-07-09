@@ -1,17 +1,21 @@
 package main
 
 import (
-	"fmt"
 	"context"
-	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
-	"gitlab.com/lition/quorum-maker-nodemanager/client"
-	"gitlab.com/lition/quorum-maker-nodemanager/contractclient"
-	"gitlab.com/lition/quorum-maker-nodemanager/service"
+	"fmt"
+	"math/big"
 	"net/http"
 	"os"
 	"os/signal"
 	"time"
+
+	"github.com/gorilla/mux"
+	log "github.com/sirupsen/logrus"
+	"gitlab.com/lition/quorum-maker-nodemanager/client"
+	"gitlab.com/lition/quorum-maker-nodemanager/contractclient"
+	istanbulUtils "gitlab.com/lition/quorum-maker-nodemanager/istanbul"
+	litionContractClient "gitlab.com/lition/quorum-maker-nodemanager/lition_contractclient"
+	"gitlab.com/lition/quorum-maker-nodemanager/service"
 )
 
 var nodeUrl = "http://localhost:22000"
@@ -24,13 +28,35 @@ func init() {
 }
 
 func main() {
-
 	if len(os.Args) > 1 {
 		nodeUrl = os.Args[1]
 	}
 
 	if len(os.Args) > 2 {
 		listenPort = ":" + os.Args[2]
+	}
+
+	// Init Lition Smartcontract client
+	// TODO: read all these values from config
+	miningFlag := true
+	infuraURL := "wss://ropsten.infura.io/ws"
+	contractAddress := "0xF4f9c1c8D66C8c9c09456BaD6a9890C3caa768c3"
+	privateKey := "5C5D06D3A4F0EB0B90F703CF345C8B4FE209FB0958E884312962F3A24D8218FE"
+	chainID := big.NewInt(0)
+
+	litionContractClient, err := litionContractClient.NewContractClient(infuraURL, contractAddress, privateKey)
+	if err != nil {
+		log.Fatal("Unable to init Lition smart contract client")
+	}
+	// Start listeners
+	if miningFlag == true {
+		err := litionContractClient.InitListeners(chainID)
+		if err != nil {
+			log.Fatal("Unable to init Lition smart contract event listeners")
+		}
+
+		go litionContractClient.Start_StartMiningEventListener(istanbulUtils.VoteWitness)
+		go litionContractClient.Start_StopMiningEventListener(istanbulUtils.UnvoteWitness)
 	}
 
 	router := mux.NewRouter()
@@ -57,7 +83,7 @@ func main() {
 
 	networkMapService := contractclient.NetworkMapContractClient{EthClient: client.EthClient{nodeUrl}}
 	router.HandleFunc("/txn/{txn_hash}", nodeService.GetTransactionInfoHandler).Methods("GET")
-	router.HandleFunc( "/rmpld/{txn_hash}", nodeService.DeleteTransactionPayloadHandler).Methods("GET")
+	router.HandleFunc("/rmpld/{txn_hash}", nodeService.DeleteTransactionPayloadHandler).Methods("GET")
 	router.HandleFunc("/txn", nodeService.GetLatestTransactionInfoHandler).Methods("GET")
 	router.HandleFunc("/block/{block_no}", nodeService.GetBlockInfoHandler).Methods("GET")
 	router.HandleFunc("/block", nodeService.GetLatestBlockInfoHandler).Methods("GET")
@@ -130,6 +156,8 @@ func main() {
 
 	// Block until we receive our signal.
 	<-c
+	// Deinit lition smart contract cliet
+	litionContractClient.DeInit()
 
 	// Create a deadline to wait for.
 	ctx, cancel := context.WithTimeout(context.Background(), 15)

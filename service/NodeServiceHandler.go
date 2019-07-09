@@ -15,7 +15,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/magiconair/properties"
 	log "github.com/sirupsen/logrus"
-	litioncontractclient "gitlab.com/lition/quorum-maker-nodemanager/lition_contractclient"
 	"gitlab.com/lition/quorum-maker-nodemanager/util"
 )
 
@@ -169,7 +168,7 @@ func (nsi *NodeServiceImpl) GetGenesisHandler(w http.ResponseWriter, r *http.Req
 
 	log.Info(fmt.Sprint("Join request received from node: ", nodename, " with IP: ", foreignIP, ", enode: ", enode, ", accPubKey: ", accPubKey, " and chainID: ", chainID))
 
-	if peerMap[enode] == "YES" || litioncontractclient.IsAllowedUser(chainID, accPubKey) {
+	if peerMap[enode] == "YES" /* || litioncontractclient.IsAllowedUser(chainID, accPubKey) */ {
 		response := nsi.getGenesis(nsi.Url)
 		json.NewEncoder(w).Encode(response)
 	} else if peerMap[enode] == "NO" {

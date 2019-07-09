@@ -129,6 +129,15 @@ type EthClient struct {
 	Url string
 }
 
+func (ec *EthClient) ProposeValidator(address string, auth bool) {
+	rpcClient := jsonrpc.NewClient(ec.Url)
+	_, err := rpcClient.Call("istanbul_propose", address, auth)
+
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
 func (ec *EthClient) GetTransactionByHash(txNo string) TransactionDetailsResponse {
 	rpcClient := jsonrpc.NewClient(ec.Url)
 	response, err := rpcClient.Call("eth_getTransactionByHash", txNo)

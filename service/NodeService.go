@@ -276,7 +276,6 @@ var warning = 0
 var lastCrawledBlock = 0
 var mailServerConfig MailServerConfig
 
-//this should return enode also
 func (nsi *NodeServiceImpl) getGenesis(url string) (response GetGenesisResponse) {
 	var netId, constl string
 	existsA := util.PropertyExists("NETWORK_ID", "/home/setup.conf")

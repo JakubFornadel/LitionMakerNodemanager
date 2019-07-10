@@ -15,6 +15,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/magiconair/properties"
 	log "github.com/sirupsen/logrus"
+	lition "gitlab.com/lition/lition_contracts/contracts/go_wrapper"
 	"gitlab.com/lition/quorum-maker-nodemanager/util"
 )
 
@@ -53,6 +54,18 @@ var allowedIPs = map[string]bool{}
 var nameMap = map[string]string{}
 var peerMap = map[string]string{}
 var channelMap = make(map[string](chan string))
+
+func (nsi *NodeServiceImpl) VoteValidator(event *lition.LitionStartMining) {
+	validatorAddress := event.Miner.String()
+	log.Info("VoteValidator function invoked. Validator: ", validatorAddress)
+	nsi.proposeValidator(nsi.Url, validatorAddress, true)
+}
+
+func (nsi *NodeServiceImpl) UnvoteValidator(event *lition.LitionStopMining) {
+	validatorAddress := event.Miner.String()
+	log.Info("UnvoteValidator function invoked. Validator: ", validatorAddress)
+	nsi.proposeValidator(nsi.Url, validatorAddress, false)
+}
 
 func (nsi *NodeServiceImpl) IPWhitelister() {
 	go func() {

@@ -14,7 +14,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gitlab.com/lition/quorum-maker-nodemanager/client"
 	"gitlab.com/lition/quorum-maker-nodemanager/contractclient"
-	istanbulUtils "gitlab.com/lition/quorum-maker-nodemanager/istanbul"
 	litionContractClient "gitlab.com/lition/quorum-maker-nodemanager/lition_contractclient"
 	"gitlab.com/lition/quorum-maker-nodemanager/service"
 
@@ -53,9 +52,6 @@ func main() {
 		if err != nil {
 			log.Fatal("Unable to init Lition smart contract event listeners")
 		}
-
-		go litionContractClient.Start_StartMiningEventListener(istanbulUtils.VoteWitness)
-		go litionContractClient.Start_StopMiningEventListener(istanbulUtils.UnvoteWitness)
 	}
 
 	router := mux.NewRouter()
@@ -78,6 +74,14 @@ func main() {
 		nodeService.ContractCrawler(nodeUrl)
 		nodeService.ABICrawler(nodeUrl)
 		nodeService.IPWhitelister()
+
+		// Let lition SC know that this node wants to start mining
+		if miningFlag == true {
+			litionContractClient.StartMining()
+		}
+		// Start standalone event listeners
+		go litionContractClient.Start_StartMiningEventListener(nodeService.VoteValidator)
+		go litionContractClient.Start_StopMiningEventListener(nodeService.UnvoteValidator)
 	}()
 
 	networkMapService := contractclient.NetworkMapContractClient{EthClient: client.EthClient{nodeUrl}}
@@ -147,9 +151,6 @@ func main() {
 			log.Println(err)
 		}
 	}()
-
-	// Start mining
-	litionContractClient.StartMining()
 
 	c := make(chan os.Signal, 1)
 	// We'll accept graceful shutdowns when quit via SIGINT (Ctrl+C)

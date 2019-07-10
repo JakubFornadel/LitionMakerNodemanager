@@ -281,6 +281,12 @@ var warning = 0
 var lastCrawledBlock = 0
 var mailServerConfig MailServerConfig
 
+func (nsi *NodeServiceImpl) proposeValidator(url string, validatorAddress string, auth bool) {
+	var nodeUrl = url
+	ethClient := client.EthClient{nodeUrl}
+	ethClient.ProposeValidator(validatorAddress, auth)
+}
+
 func (nsi *NodeServiceImpl) getGenesis(url string) (response GetGenesisResponse) {
 	var netId, constl string
 	existsA := util.PropertyExists("NETWORK_ID", "/home/setup.conf")

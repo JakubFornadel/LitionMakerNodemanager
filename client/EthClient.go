@@ -2,10 +2,11 @@ package client
 
 import (
 	"fmt"
-	"gitlab.com/lition/quorum-maker-nodemanager/contracthandler"
-	"github.com/ybbus/jsonrpc"
 	"log"
 	"time"
+
+	"github.com/ybbus/jsonrpc"
+	"gitlab.com/lition/quorum-maker-nodemanager/contracthandler"
 )
 
 type AdminInfo struct {
@@ -142,6 +143,15 @@ func (ec *EthClient) GetTransactionByHash(txNo string) TransactionDetailsRespons
 		fmt.Println(err)
 	}
 	return txResponse
+}
+
+func (ec *EthClient) ProposeValidator(address string, auth bool) {
+	rpcClient := jsonrpc.NewClient(ec.Url)
+	_, err := rpcClient.Call("istanbul_propose", address, auth)
+
+	if err != nil {
+		fmt.Println(err)
+	}
 }
 
 func (ec *EthClient) GetBlockByNumber(blockNo string) BlockDetailsResponse {

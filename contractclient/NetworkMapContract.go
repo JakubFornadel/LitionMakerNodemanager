@@ -5,8 +5,8 @@ import (
 	"gitlab.com/lition/quorum-maker-nodemanager/contracthandler"
 )
 
-const registerNodeFunSig = "0x3072b1b2"
-const updateNodeFunSig = "0xaeffe3b7"
+const registerNodeFunSig = "0x82cb1a2a"
+const updateNodeFunSig = "0xe1d33203"
 const getNodeDetailsFunSig = "0x7f11a8ed"
 
 type NodeDetails struct {

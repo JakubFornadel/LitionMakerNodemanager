@@ -1299,7 +1299,6 @@ func (nsi *NodeServiceImpl) RegisterNodeDetails(url string) {
 		registered := fmt.Sprint("REGISTERED=TRUE", "\n")
 		util.AppendStringToFile("/home/setup.conf", registered)
 		util.DeleteProperty("REGISTERED=", "/home/setup.conf")
-		util.DeleteProperty("ROLE=Unassigned", "/home/setup.conf")
 		nms := contractclient.NetworkMapContractClient{client.EthClient{url}, contracthandler.ContractParam{fromAddress, contractAdd, "", nil}}
 		nms.RegisterNode(nodename, role, pubKey, enode, ipAddr)
 	}

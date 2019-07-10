@@ -15,7 +15,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/magiconair/properties"
 	log "github.com/sirupsen/logrus"
-	lition "gitlab.com/lition/lition_contracts/contracts/go_wrapper"
 	"gitlab.com/lition/quorum-maker-nodemanager/util"
 )
 
@@ -55,15 +54,27 @@ var nameMap = map[string]string{}
 var peerMap = map[string]string{}
 var channelMap = make(map[string](chan string))
 
-func (nsi *NodeServiceImpl) VoteValidator(event *lition.LitionStartMining) {
-	validatorAddress := event.Miner.String()
-	log.Info("VoteValidator function invoked. Validator: ", validatorAddress)
+func (nsi *NodeServiceImpl) ProposeValidator(w http.ResponseWriter, r *http.Request) {
+	var request ProposeValidatorRequest
+	_ = json.NewDecoder(r.Body).Decode(&request)
+
+	// TODO: check input parameters
+	//w.WriteHeader(http.BadRequest)
+	//w.Write([]byte("Invalid call arguments"))
+
+	response := nsi.proposeValidator(nsi.Url, request.ValidatorAddress, request.Vote)
+	json.NewEncoder(w).Encode(response)
+}
+
+// This wrapper is used in event listener for automatic voting
+func (nsi *NodeServiceImpl) VoteValidator(validatorAddress string) {
+	log.Info("Aut. VoteValidator function invoked. Validator: ", validatorAddress)
 	nsi.proposeValidator(nsi.Url, validatorAddress, true)
 }
 
-func (nsi *NodeServiceImpl) UnvoteValidator(event *lition.LitionStopMining) {
-	validatorAddress := event.Miner.String()
-	log.Info("UnvoteValidator function invoked. Validator: ", validatorAddress)
+// This wrapper is used in event listener for automatic unvoting
+func (nsi *NodeServiceImpl) UnvoteValidator(validatorAddress string) {
+	log.Info("Aut. UnvoteValidator function invoked. Validator: ", validatorAddress)
 	nsi.proposeValidator(nsi.Url, validatorAddress, false)
 }
 

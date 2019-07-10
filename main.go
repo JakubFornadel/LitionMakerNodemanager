@@ -66,6 +66,16 @@ func main() {
 		}
 	}()
 
+	// TODO: remove when done testing
+	// Let lition SC know that this node wants to start mining
+	if miningFlag == true {
+		litionContractClient.StartMining()
+
+		// Start standalone event listeners
+		go litionContractClient.Start_StartMiningEventListener(nodeService.VoteValidator)
+		go litionContractClient.Start_StopMiningEventListener(nodeService.UnvoteValidator)
+	}
+
 	go func() {
 		nodeService.CheckGethStatus(nodeUrl)
 		//log.Info("Deploying Network Manager Contract")
@@ -78,10 +88,11 @@ func main() {
 		// Let lition SC know that this node wants to start mining
 		if miningFlag == true {
 			litionContractClient.StartMining()
+
+			// Start standalone event listeners
+			go litionContractClient.Start_StartMiningEventListener(nodeService.VoteValidator)
+			go litionContractClient.Start_StopMiningEventListener(nodeService.UnvoteValidator)
 		}
-		// Start standalone event listeners
-		go litionContractClient.Start_StartMiningEventListener(nodeService.VoteValidator)
-		go litionContractClient.Start_StopMiningEventListener(nodeService.UnvoteValidator)
 	}()
 
 	networkMapService := contractclient.NetworkMapContractClient{EthClient: client.EthClient{nodeUrl}}
@@ -107,6 +118,7 @@ func main() {
 	router.HandleFunc("/restart", nodeService.RestartHandler).Methods("GET")
 	router.HandleFunc("/latestBlock", nodeService.LatestBlockHandler).Methods("GET")
 	router.HandleFunc("/latency", nodeService.LatencyHandler).Methods("GET")
+	router.HandleFunc("/proposeValidator", nodeService.ProposeValidator).Methods("POST")
 	//router.HandleFunc("/logs", nodeService.LogsHandler).Methods("GET")
 	router.HandleFunc("/txnsearch/{txn_hash}", nodeService.TransactionSearchHandler).Methods("GET")
 	router.HandleFunc("/mailserver", nodeService.MailServerConfigHandler).Methods("POST")
@@ -199,6 +211,9 @@ func getContractConfig() (infuraURL string, contractAddress string, chainID *big
 	// Default values - should not change
 	pInfuraURL := "wss://ropsten.infura.io/ws"
 	pContractAddress := "0xF4f9c1c8D66C8c9c09456BaD6a9890C3caa768c3"
+
+	// TODO: remove when testing done
+	return pInfuraURL, pContractAddress, big.NewInt(0), "5C5D06D3A4F0EB0B90F703CF345C8B4FE209FB0958E884312962F3A24D8218FE", true
 
 	p := properties.MustLoadFile("/home/setup.conf", properties.UTF8)
 

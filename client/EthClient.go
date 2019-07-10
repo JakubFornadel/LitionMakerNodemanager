@@ -145,13 +145,16 @@ func (ec *EthClient) GetTransactionByHash(txNo string) TransactionDetailsRespons
 	return txResponse
 }
 
-func (ec *EthClient) ProposeValidator(address string, auth bool) {
+func (ec *EthClient) ProposeValidator(address string, vote bool) error {
 	rpcClient := jsonrpc.NewClient(ec.Url)
-	_, err := rpcClient.Call("istanbul_propose", address, auth)
+	_, err := rpcClient.Call("istanbul_propose", address, vote)
 
 	if err != nil {
 		fmt.Println(err)
+		return err
 	}
+
+	return nil
 }
 
 func (ec *EthClient) GetBlockByNumber(blockNo string) BlockDetailsResponse {

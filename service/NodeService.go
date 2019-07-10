@@ -29,6 +29,15 @@ type ConnectionInfo struct {
 	Enode string `json:"enode"`
 }
 
+type ProposeValidatorRequest struct {
+	ValidatorAddress string `json:"validator-address,omitempty"`
+	Vote             bool   `json:"vote,omitempty"`
+}
+
+type ProposeValidatorResponse struct {
+	Success bool `json:"success"`
+}
+
 type PendingRequests struct {
 	NodeName string `json:"nodeName"`
 	Enode    string `json:"enode"`
@@ -281,10 +290,18 @@ var warning = 0
 var lastCrawledBlock = 0
 var mailServerConfig MailServerConfig
 
-func (nsi *NodeServiceImpl) proposeValidator(url string, validatorAddress string, auth bool) {
+func (nsi *NodeServiceImpl) proposeValidator(url string, validatorAddress string, auth bool) (response ProposeValidatorResponse) {
 	var nodeUrl = url
 	ethClient := client.EthClient{nodeUrl}
-	ethClient.ProposeValidator(validatorAddress, auth)
+
+	err := ethClient.ProposeValidator(validatorAddress, auth)
+	if err == nil {
+		response.Success = true
+	} else {
+		response.Success = false
+	}
+
+	return response
 }
 
 func (nsi *NodeServiceImpl) getGenesis(url string) (response GetGenesisResponse) {

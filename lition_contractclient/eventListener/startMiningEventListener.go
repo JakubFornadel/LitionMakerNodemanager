@@ -91,7 +91,7 @@ func (listener *StartMiningEventListener) ReInit() {
 	listener.Init()
 }
 
-func (listener *StartMiningEventListener) Start(f func(*lition.LitionStartMining)) error {
+func (listener *StartMiningEventListener) Start(f func(string)) error {
 	if listener.initialized == false {
 		return errors.New("Trying to Start \"StartMiningEventListener\" without previous initialization")
 	}
@@ -113,7 +113,7 @@ func (listener *StartMiningEventListener) Start(f func(*lition.LitionStartMining
 		select {
 		case event := <-listener.eventChannel:
 			log.Info("New \"StartMining\" event received.")
-			f(event)
+			f(event.Miner.String())
 		case err := <-listener.eventSubs.Err():
 			return err
 		case <-listener.stopChannel:

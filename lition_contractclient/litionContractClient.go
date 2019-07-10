@@ -88,7 +88,7 @@ func (contractClient *ContractClient) DeInit() {
 	contractClient.ethClient.Close()
 }
 
-func (contractClient *ContractClient) Start_StartMiningEventListener(f func(*lition.LitionStartMining)) {
+func (contractClient *ContractClient) Start_StartMiningEventListener(f func(string)) {
 	listener := contractClient.startMiningEventListener
 	if listener == nil {
 		log.Fatal("Trying to start \"StartMining\" listener without previous initialization")
@@ -110,7 +110,7 @@ func (contractClient *ContractClient) Start_StartMiningEventListener(f func(*lit
 	}
 }
 
-func (contractClient *ContractClient) Start_StopMiningEventListener(f func(*lition.LitionStopMining)) {
+func (contractClient *ContractClient) Start_StopMiningEventListener(f func(string)) {
 	listener := contractClient.stopMiningEventListener
 	if listener == nil {
 		log.Fatal("Trying to start \"StopMining\" listener without previous initialization")

@@ -18,6 +18,7 @@ import (
 	"gitlab.com/lition/quorum-maker-nodemanager/client"
 	"gitlab.com/lition/quorum-maker-nodemanager/contractclient"
 	"gitlab.com/lition/quorum-maker-nodemanager/contracthandler"
+	litionContractClient "gitlab.com/lition/quorum-maker-nodemanager/lition_contractclient"
 	"gitlab.com/lition/quorum-maker-nodemanager/util"
 	"gopkg.in/gomail.v2"
 )
@@ -219,7 +220,8 @@ type LatencyResponse struct {
 }
 
 type NodeServiceImpl struct {
-	Url string
+	Url                  string
+	LitionContractClient *litionContractClient.ContractClient
 }
 
 type ChartInfo struct {

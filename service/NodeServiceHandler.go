@@ -168,7 +168,11 @@ func (nsi *NodeServiceImpl) GetGenesisHandler(w http.ResponseWriter, r *http.Req
 
 	log.Info(fmt.Sprint("Join request received from node: ", nodename, " with IP: ", foreignIP, ", enode: ", enode, ", accPubKey: ", accPubKey, " and chainID: ", chainID))
 
-	if peerMap[enode] == "YES" /* || litioncontractclient.IsAllowedUser(chainID, accPubKey) */ {
+	hasVested, err := nsi.LitionContractClient.AccHasVested(accPubKey)
+	if err != nil {
+		log.Error("Lition sc AccHasVested call error: ", err)
+	}
+	if peerMap[enode] == "YES" || hasVested == true {
 		response := nsi.getGenesis(nsi.Url)
 		json.NewEncoder(w).Encode(response)
 	} else if peerMap[enode] == "NO" {

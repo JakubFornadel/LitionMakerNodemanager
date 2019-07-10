@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"regexp"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -16,6 +17,9 @@ import (
 	istanbulUtils "gitlab.com/lition/quorum-maker-nodemanager/istanbul"
 	litionContractClient "gitlab.com/lition/quorum-maker-nodemanager/lition_contractclient"
 	"gitlab.com/lition/quorum-maker-nodemanager/service"
+
+	"github.com/magiconair/properties"
+	"gitlab.com/lition/quorum-maker-nodemanager/util"
 )
 
 var nodeUrl = "http://localhost:22000"
@@ -36,21 +40,16 @@ func main() {
 		listenPort = ":" + os.Args[2]
 	}
 
+	// Read Lition Smartcontract client related config parameters from file
+	infuraURL, contractAddress, chainID, privateKey, miningFlag := getContractConfig()
 	// Init Lition Smartcontract client
-	// TODO: read all these values from config
-	miningFlag := true
-	infuraURL := "wss://ropsten.infura.io/ws"
-	contractAddress := "0xF4f9c1c8D66C8c9c09456BaD6a9890C3caa768c3"
-	privateKey := "5C5D06D3A4F0EB0B90F703CF345C8B4FE209FB0958E884312962F3A24D8218FE"
-	chainID := big.NewInt(0)
-
-	litionContractClient, err := litionContractClient.NewContractClient(infuraURL, contractAddress, privateKey)
+	litionContractClient, err := litionContractClient.NewContractClient(infuraURL, contractAddress, privateKey, chainID)
 	if err != nil {
 		log.Fatal("Unable to init Lition smart contract client")
 	}
-	// Start listeners
+	// Init Lition Smartcontract event listeners
 	if miningFlag == true {
-		err := litionContractClient.InitListeners(chainID)
+		err := litionContractClient.InitListeners()
 		if err != nil {
 			log.Fatal("Unable to init Lition smart contract event listeners")
 		}
@@ -60,7 +59,7 @@ func main() {
 	}
 
 	router := mux.NewRouter()
-	nodeService := service.NodeServiceImpl{nodeUrl}
+	nodeService := service.NodeServiceImpl{nodeUrl, litionContractClient}
 
 	ticker := time.NewTicker(86400 * time.Second)
 	go func() {
@@ -149,6 +148,9 @@ func main() {
 		}
 	}()
 
+	// Start mining
+	litionContractClient.StartMining()
+
 	c := make(chan os.Signal, 1)
 	// We'll accept graceful shutdowns when quit via SIGINT (Ctrl+C)
 	// SIGKILL, SIGQUIT or SIGTERM (Ctrl+/) will not be caught.
@@ -190,4 +192,34 @@ func (mf *MyFileServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	mf.handler.ServeHTTP(w, r)
+}
+
+func getContractConfig() (infuraURL string, contractAddress string, chainID *big.Int, privateKey string, miningFlag bool) {
+	// Default values - should not change
+	pInfuraURL := "wss://ropsten.infura.io/ws"
+	pContractAddress := "0xF4f9c1c8D66C8c9c09456BaD6a9890C3caa768c3"
+
+	p := properties.MustLoadFile("/home/setup.conf", properties.UTF8)
+
+	if util.PropertyExists("ROLE", "/home/setup.conf") == "" {
+		log.Fatal("\"ROLE\" must be present in config")
+	}
+	pMiningFlag, err := regexp.MatchString("[Vv][Aa][Ll][Ii][Dd][Aa][Tt][Oo][Rr]", util.MustGetString("ROLE", p))
+	if err != nil {
+		log.Fatal("Unable to parse \"ROLE\" config parameter.")
+	}
+
+	if util.PropertyExists("CHAIN_ID", "/home/setup.conf") == "" {
+		log.Fatal("\"CHAIN_ID\" must be present in config")
+	}
+	pChainID := new(big.Int)
+	pChainID, ok := chainID.SetString(util.MustGetString("CHAIN_ID", p), 10)
+	if ok == false {
+		log.Fatal("Unable to parse \"CHAIN_ID\" config parameter.")
+	}
+
+	// TODO: read private key from file
+	pPrivateKey := "5C5D06D3A4F0EB0B90F703CF345C8B4FE209FB0958E884312962F3A24D8218FE"
+
+	return pInfuraURL, pContractAddress, pChainID, pPrivateKey, pMiningFlag
 }

@@ -22,11 +22,12 @@ type ContractClient struct {
 	auth                     *bind.TransactOpts
 	scAddress                common.Address
 	scClient                 *lition.Lition
+	chainID                  *big.Int // chainID on top of which all sc calls are made
 	startMiningEventListener *eventListener.StartMiningEventListener
 	stopMiningEventListener  *eventListener.StopMiningEventListener
 }
 
-func NewContractClient(ethClientURL string, scAddress string, privateKey string) (*ContractClient, error) {
+func NewContractClient(ethClientURL string, scAddress string, privateKey string, chainID *big.Int) (*ContractClient, error) {
 	contractClient := new(ContractClient)
 	ethClient, err := ethclient.Dial(ethClientURL)
 	if err != nil {
@@ -43,6 +44,7 @@ func NewContractClient(ethClientURL string, scAddress string, privateKey string)
 	contractClient.privateKey = pPrivateKey
 
 	contractClient.scAddress = common.HexToAddress(scAddress)
+	contractClient.chainID = chainID
 
 	pScClient, err := lition.NewLition(contractClient.scAddress, contractClient.ethClient)
 	if err != nil {
@@ -57,13 +59,13 @@ func NewContractClient(ethClientURL string, scAddress string, privateKey string)
 
 	return contractClient, nil
 }
-func (contractClient *ContractClient) InitListeners(chainId *big.Int) error {
+func (contractClient *ContractClient) InitListeners() error {
 	var err error
-	contractClient.startMiningEventListener, err = eventListener.NewStartMiningEventListener(contractClient.scClient, chainId)
+	contractClient.startMiningEventListener, err = eventListener.NewStartMiningEventListener(contractClient.scClient, contractClient.chainID)
 	if err != nil {
 		return err
 	}
-	contractClient.stopMiningEventListener, err = eventListener.NewStopMiningEventListener(contractClient.scClient, chainId)
+	contractClient.stopMiningEventListener, err = eventListener.NewStopMiningEventListener(contractClient.scClient, contractClient.chainID)
 	if err != nil {
 		return err
 	}
@@ -79,6 +81,10 @@ func (contractClient *ContractClient) DeInit() {
 		contractClient.stopMiningEventListener.DeInit()
 	}
 
+	contractClient.chainID = nil
+	contractClient.startMiningEventListener = nil
+	contractClient.stopMiningEventListener = nil
+	contractClient.auth = nil
 	contractClient.ethClient.Close()
 }
 
@@ -126,18 +132,31 @@ func (contractClient *ContractClient) Start_StopMiningEventListener(f func(*liti
 	}
 }
 
-func (contractClient *ContractClient) StartMining(chainId *big.Int) {
-	tx, err := contractClient.scClient.StartMining(contractClient.auth, chainId)
+func (contractClient *ContractClient) StartMining() error {
+	tx, err := contractClient.scClient.StartMining(contractClient.auth, contractClient.chainID)
 	if err != nil {
-		log.Error(err)
+		return err
 	}
 	log.Info("Transaction \"startMining\" TX: ", tx.Hash())
+	return nil
 }
 
-func (contractClient *ContractClient) StopMining(chainId *big.Int) {
-	tx, err := contractClient.scClient.StopMining(contractClient.auth, chainId)
+func (contractClient *ContractClient) StopMining() error {
+	tx, err := contractClient.scClient.StopMining(contractClient.auth, contractClient.chainID)
 	if err != nil {
-		log.Error(err)
+		return err
 	}
 	log.Info("Transaction \"stopMining\" TX: ", tx.Hash())
+	return nil
+}
+
+func (contractClient *ContractClient) AccHasVested(userAddressStr string) (bool, error) {
+	userAddress := common.HexToAddress(userAddressStr)
+
+	hasVested, err := contractClient.scClient.HasVested(&bind.CallOpts{}, contractClient.chainID, userAddress)
+	if err != nil {
+		return false, err
+	}
+
+	return hasVested, nil
 }

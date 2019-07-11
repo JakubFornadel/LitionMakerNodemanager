@@ -450,7 +450,7 @@ func (nsi *NodeServiceImpl) CreateNetworkScriptCallHandler(w http.ResponseWriter
 	var request CreateNetworkScriptArgs
 	_ = json.NewDecoder(r.Body).Decode(&request)
 	fmt.Println(request)
-	response := nsi.createNetworkScriptCall(request.Nodename, request.CurrentIP, request.RPCPort, request.WhisperPort, request.ConstellationPort, request.RaftPort, request.NodeManagerPort)
+	response := nsi.createNetworkScriptCall(request.Nodename, request.CurrentIP, request.RPCPort, request.WhisperPort, request.ConstellationPort, request.NodeManagerPort)
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "OPTIONS, GET, POST")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Depth, User-Agent, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-Control")
@@ -461,7 +461,7 @@ func (nsi *NodeServiceImpl) JoinNetworkScriptCallHandler(w http.ResponseWriter, 
 	var request JoinNetworkScriptArgs
 	_ = json.NewDecoder(r.Body).Decode(&request)
 	fmt.Println(request)
-	response := nsi.joinRequestResponseCall(request.Nodename, request.CurrentIP, request.RPCPort, request.WhisperPort, request.ConstellationPort, request.RaftPort, request.NodeManagerPort, request.MasterNodeManagerPort, request.MasterIP)
+	response := nsi.joinRequestResponseCall(request.Nodename, request.CurrentIP, request.RPCPort, request.WhisperPort, request.ConstellationPort, request.NodeManagerPort, request.MasterNodeManagerPort, request.MasterIP)
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "OPTIONS, GET, POST")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Depth, User-Agent, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-Control")

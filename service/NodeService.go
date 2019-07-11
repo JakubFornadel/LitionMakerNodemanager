@@ -52,8 +52,7 @@ type NodeInfo struct {
 	TotalNodeCount int              `json:"totalNodeCount"`
 	Active         string           `json:"active"`
 	ConnectionInfo ConnectionInfo   `json:"connectionInfo"`
-	RaftRole       string           `json:"raftRole"`
-	RaftID         int              `json:"raftID"`
+	Role           string           `json:"role"`
 	BlockNumber    int64            `json:"blockNumber"`
 	PendingTxCount int              `json:"pendingTxCount"`
 	Genesis        string           `json:"genesis"`
@@ -178,7 +177,6 @@ type CreateNetworkScriptArgs struct {
 	RPCPort           string `json:"rpcPort,omitempty"`
 	WhisperPort       string `json:"whisperPort,omitempty"`
 	ConstellationPort string `json:"constellationPort,omitempty"`
-	RaftPort          string `json:"raftPort,omitempty"`
 	NodeManagerPort   string `json:"nodeManagerPort,omitempty"`
 }
 
@@ -188,7 +186,6 @@ type JoinNetworkScriptArgs struct {
 	RPCPort               string `json:"rpcPort,omitempty"`
 	WhisperPort           string `json:"whisperPort,omitempty"`
 	ConstellationPort     string `json:"constellationPort,omitempty"`
-	RaftPort              string `json:"raftPort,omitempty"`
 	NodeManagerPort       string `json:"nodeManagerPort,omitempty"`
 	MasterNodeManagerPort string `json:"masterNodeManagerPort,omitempty"`
 	MasterIP              string `json:"masterIP,omitempty"`
@@ -325,16 +322,17 @@ func (nsi *NodeServiceImpl) getGenesis(url string) (response GetGenesisResponse)
 }
 
 func (nsi *NodeServiceImpl) joinNetwork(enode string, url string) string {
-	var nodeUrl = url
-	ethClient := client.EthClient{nodeUrl}
-	raftId := ethClient.RaftAddPeer(enode)
+	// var nodeUrl = url
+	// ethClient := client.EthClient{nodeUrl}
+	// probably remove whole function
+
 	var contractAdd string
 	exists := util.PropertyExists("CONTRACT_ADD", "/home/setup.conf")
 	if exists != "" {
 		p := properties.MustLoadFile("/home/setup.conf", properties.UTF8)
 		contractAdd = util.MustGetString("CONTRACT_ADD", p)
 	}
-	collatedInfo := fmt.Sprint(raftId, ":", contractAdd)
+	collatedInfo := fmt.Sprint(contractAdd)
 	return collatedInfo
 }
 
@@ -385,22 +383,15 @@ func (nsi *NodeServiceImpl) getCurrentNode(url string) NodeInfo {
 	nodename = strings.TrimSuffix(nodename, ".sh")
 	nodename = strings.TrimPrefix(nodename, "start_")
 
-	var ipAddr, raftId, rpcPort, nodeName string
+	var ipAddr, rpcPort, nodeName string
 	existsA := util.PropertyExists("CURRENT_IP", "/home/setup.conf")
-	existsB := util.PropertyExists("RAFT_ID", "/home/setup.conf")
 	existsC := util.PropertyExists("RPC_PORT", "/home/setup.conf")
 	existsD := util.PropertyExists("NODENAME", "/home/setup.conf")
-	if existsA != "" && existsB != "" && existsC != "" && existsD != "" {
+	if existsA != "" && existsC != "" && existsD != "" {
 		ipAddr = util.MustGetString("CURRENT_IP", p)
-		raftId = util.MustGetString("RAFT_ID", p)
 		rpcPort = util.MustGetString("RPC_PORT", p)
 		nodeName = util.MustGetString("NODENAME", p)
 	}
-	raftIdInt, err := strconv.Atoi(raftId)
-	if err != nil {
-		log.Println(err)
-	}
-
 	rpcPortInt, err := strconv.Atoi(rpcPort)
 	if err != nil {
 		log.Println(err)
@@ -415,9 +406,9 @@ func (nsi *NodeServiceImpl) getCurrentNode(url string) NodeInfo {
 	blockNumber := ethClient.BlockNumber()
 	blockNumberInt := util.HexStringtoInt64(blockNumber)
 
-	raftRole := ethClient.RaftRole()
+	role := util.PropertyExists("ROLE", "/home/setup.conf")
 
-	raftRole = strings.TrimSuffix(raftRole, "\n")
+	role = strings.TrimSuffix(role, "\n")
 
 	b, err := ioutil.ReadFile("/home/node/genesis.json")
 
@@ -428,7 +419,7 @@ func (nsi *NodeServiceImpl) getCurrentNode(url string) NodeInfo {
 	genesis := string(b)
 	genesis = strings.Replace(genesis, "\n", "", -1)
 	conn := ConnectionInfo{ipAddr, rpcPortInt, enode}
-	responseObj := NodeInfo{nodeName, count, totalCount, activeStatus, conn, raftRole, raftIdInt, blockNumberInt, pendingTxCount, genesis, thisAdminInfo}
+	responseObj := NodeInfo{nodeName, count, totalCount, activeStatus, conn, role, blockNumberInt, pendingTxCount, genesis, thisAdminInfo}
 	return responseObj
 }
 
@@ -971,7 +962,7 @@ func (nsi *NodeServiceImpl) deployContract(pubKeys []string, fileName []string, 
 	return contractJsonArr
 }
 
-func (nsi *NodeServiceImpl) createNetworkScriptCall(nodename string, currentIP string, rpcPort string, whisperPort string, constellationPort string, raftPort string, nodeManagerPort string) SuccessResponse {
+func (nsi *NodeServiceImpl) createNetworkScriptCall(nodename string, currentIP string, rpcPort string, whisperPort string, constellationPort string, nodeManagerPort string) SuccessResponse {
 	var successResponse SuccessResponse
 	cmd := exec.Command("./setup.sh", "1", nodename)
 	cmd.Dir = "./Setup"
@@ -983,7 +974,7 @@ func (nsi *NodeServiceImpl) createNetworkScriptCall(nodename string, currentIP s
 	}
 
 	var setupConf string
-	setupConf = "CURRENT_IP=" + currentIP + "\n" + "RPC_PORT=" + rpcPort + "\n" + "WHISPER_PORT=" + whisperPort + "\n" + "CONSTELLATION_PORT=" + constellationPort + "\n" + "RAFT_PORT=" + raftPort + "\n" + "NODEMANAGER_PORT=" + nodeManagerPort + "\n"
+	setupConf = "CURRENT_IP=" + currentIP + "\n" + "RPC_PORT=" + rpcPort + "\n" + "WHISPER_PORT=" + whisperPort + "\n" + "CONSTELLATION_PORT=" + constellationPort + "\n" + "NODEMANAGER_PORT=" + nodeManagerPort + "\n"
 	setupConfByte := []byte(setupConf)
 	err = ioutil.WriteFile("./Setup/"+nodename+"/setup.conf", setupConfByte, 0775)
 	if err != nil {
@@ -993,9 +984,9 @@ func (nsi *NodeServiceImpl) createNetworkScriptCall(nodename string, currentIP s
 	return successResponse
 }
 
-func (nsi *NodeServiceImpl) joinRequestResponseCall(nodename string, currentIP string, rpcPort string, whisperPort string, constellationPort string, raftPort string, nodeManagerPort string, masterNodeManagerPort string, masterIP string) SuccessResponse {
+func (nsi *NodeServiceImpl) joinRequestResponseCall(nodename string, currentIP string, rpcPort string, whisperPort string, constellationPort string, nodeManagerPort string, masterNodeManagerPort string, masterIP string) SuccessResponse {
 	var successResponse SuccessResponse
-	cmd := exec.Command("./setup.sh", "2", nodename, masterIP, masterNodeManagerPort, currentIP, rpcPort, whisperPort, constellationPort, raftPort, nodeManagerPort)
+	cmd := exec.Command("./setup.sh", "2", nodename, masterIP, masterNodeManagerPort, currentIP, rpcPort, whisperPort, constellationPort, nodeManagerPort)
 	cmd.Dir = "./Setup"
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -1005,7 +996,7 @@ func (nsi *NodeServiceImpl) joinRequestResponseCall(nodename string, currentIP s
 	}
 
 	var setupConf string
-	setupConf = "CURRENT_IP=" + currentIP + "\n" + "RPC_PORT=" + rpcPort + "\n" + "WHISPER_PORT=" + whisperPort + "\n" + "CONSTELLATION_PORT=" + constellationPort + "\n" + "RAFT_PORT=" + raftPort + "\n" + "THIS_NODEMANAGER_PORT=" + nodeManagerPort + "\n" + "MASTER_IP=" + masterIP + "\n" + "NODEMANAGER_PORT=" + masterNodeManagerPort + "\n"
+	setupConf = "CURRENT_IP=" + currentIP + "\n" + "RPC_PORT=" + rpcPort + "\n" + "WHISPER_PORT=" + whisperPort + "\n" + "CONSTELLATION_PORT=" + constellationPort + "\n" + "THIS_NODEMANAGER_PORT=" + nodeManagerPort + "\n" + "MASTER_IP=" + masterIP + "\n" + "NODEMANAGER_PORT=" + masterNodeManagerPort + "\n"
 	setupConfByte := []byte(setupConf)
 	err = ioutil.WriteFile("./Setup/"+nodename+"/setup.conf", setupConfByte, 0775)
 	if err != nil {
@@ -1316,28 +1307,25 @@ func (nsi *NodeServiceImpl) RegisterNodeDetails(url string) {
 
 		enode := ethClient.AdminNodeInfo().ID
 		fromAddress := ethClient.Coinbase()
-		var ipAddr, nodename, pubKey, role, id, contractAdd string
+		var ipAddr, nodename, pubKey, role, contractAdd string
 		existsA := util.PropertyExists("CURRENT_IP", "/home/setup.conf")
 		existsB := util.PropertyExists("NODENAME", "/home/setup.conf")
 		existsC := util.PropertyExists("PUBKEY", "/home/setup.conf")
 		existsD := util.PropertyExists("ROLE", "/home/setup.conf")
-		existsE := util.PropertyExists("RAFT_ID", "/home/setup.conf")
 		existsF := util.PropertyExists("CONTRACT_ADD", "/home/setup.conf")
-		if existsA != "" && existsB != "" && existsC != "" && existsD != "" && existsE != "" && existsF != "" {
+		if existsA != "" && existsB != "" && existsC != "" && existsD != "" && existsF != "" {
 			p := properties.MustLoadFile("/home/setup.conf", properties.UTF8)
 			ipAddr = util.MustGetString("CURRENT_IP", p)
 			nodename = util.MustGetString("NODENAME", p)
 			pubKey = util.MustGetString("PUBKEY", p)
 			role = util.MustGetString("ROLE", p)
-			id = util.MustGetString("RAFT_ID", p)
 			contractAdd = util.MustGetString("CONTRACT_ADD", p)
 		}
 		registered := fmt.Sprint("REGISTERED=TRUE", "\n")
 		util.AppendStringToFile("/home/setup.conf", registered)
 		util.DeleteProperty("REGISTERED=", "/home/setup.conf")
-		util.DeleteProperty("ROLE=Unassigned", "/home/setup.conf")
 		nms := contractclient.NetworkMapContractClient{client.EthClient{url}, contracthandler.ContractParam{fromAddress, contractAdd, "", nil}}
-		nms.RegisterNode(nodename, role, pubKey, enode, ipAddr, id)
+		nms.RegisterNode(nodename, role, pubKey, enode, ipAddr)
 	}
 }
 

@@ -242,31 +242,6 @@ func (ec *EthClient) Coinbase() string {
 	return coinbase
 }
 
-func (ec *EthClient) RaftRole() string {
-	rpcClient := jsonrpc.NewClient(ec.Url)
-	response, err := rpcClient.Call("raft_role")
-	if err != nil {
-		fmt.Println(err)
-	}
-	var raftRole string
-	err = response.GetObject(&raftRole)
-	if err != nil {
-		fmt.Println(err)
-	}
-	return raftRole
-}
-
-func (ec *EthClient) RaftAddPeer(request string) int {
-	rpcClient := jsonrpc.NewClient(ec.Url)
-	response, err := rpcClient.Call("raft_addPeer", request)
-	var raftId int
-	err = response.GetObject(&raftId)
-	if err != nil {
-		log.Println(err)
-	}
-	return raftId
-}
-
 func (ec *EthClient) GetTransactionReceipt(txNo string) TransactionReceiptResponse {
 	rpcClient := jsonrpc.NewClient(ec.Url)
 	response, err := rpcClient.Call("eth_getTransactionReceipt", txNo)
@@ -300,8 +275,11 @@ func (ec *EthClient) SendTransaction(param contracthandler.ContractParam, rh con
 	response, err = rpcClient.Call("eth_sendTransaction", []interface{}{p})
 
 	if err != nil || response.Error != nil {
-
-		fmt.Println(err)
+		if err != nil {
+			fmt.Println(err)
+		} else {
+			fmt.Println(response.Error)
+		}
 	}
 
 	//fmt.Printf("%s", response.Result)

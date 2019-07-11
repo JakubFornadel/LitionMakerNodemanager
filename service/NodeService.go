@@ -18,6 +18,7 @@ import (
 	"gitlab.com/lition/quorum-maker-nodemanager/client"
 	"gitlab.com/lition/quorum-maker-nodemanager/contractclient"
 	"gitlab.com/lition/quorum-maker-nodemanager/contracthandler"
+	litionContractClient "gitlab.com/lition/quorum-maker-nodemanager/lition_contractclient"
 	"gitlab.com/lition/quorum-maker-nodemanager/util"
 	"gopkg.in/gomail.v2"
 )
@@ -26,6 +27,15 @@ type ConnectionInfo struct {
 	IP    string `json:"ip"`
 	Port  int    `json:"port"`
 	Enode string `json:"enode"`
+}
+
+type ProposeValidatorRequest struct {
+	ValidatorAddress string `json:"validator-address,omitempty"`
+	Vote             bool   `json:"vote,omitempty"`
+}
+
+type ProposeValidatorResponse struct {
+	Success bool `json:"success"`
 }
 
 type PendingRequests struct {
@@ -216,7 +226,8 @@ type LatencyResponse struct {
 }
 
 type NodeServiceImpl struct {
-	Url string
+	Url                  string
+	LitionContractClient *litionContractClient.ContractClient
 }
 
 type ChartInfo struct {
@@ -275,6 +286,20 @@ var chartSize = 10
 var warning = 0
 var lastCrawledBlock = 0
 var mailServerConfig MailServerConfig
+
+func (nsi *NodeServiceImpl) proposeValidator(url string, validatorAddress string, auth bool) (response ProposeValidatorResponse) {
+	var nodeUrl = url
+	ethClient := client.EthClient{nodeUrl}
+
+	err := ethClient.ProposeValidator(validatorAddress, auth)
+	if err == nil {
+		response.Success = true
+	} else {
+		response.Success = false
+	}
+
+	return response
+}
 
 func (nsi *NodeServiceImpl) getGenesis(url string) (response GetGenesisResponse) {
 	var netId, constl string

@@ -15,7 +15,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/magiconair/properties"
 	log "github.com/sirupsen/logrus"
-	litioncontractclient "gitlab.com/lition/quorum-maker-nodemanager/lition_contractclient"
 	"gitlab.com/lition/quorum-maker-nodemanager/util"
 )
 
@@ -54,6 +53,30 @@ var allowedIPs = map[string]bool{}
 var nameMap = map[string]string{}
 var peerMap = map[string]string{}
 var channelMap = make(map[string](chan string))
+
+func (nsi *NodeServiceImpl) ProposeValidator(w http.ResponseWriter, r *http.Request) {
+	var request ProposeValidatorRequest
+	_ = json.NewDecoder(r.Body).Decode(&request)
+
+	// TODO: check input parameters
+	//w.WriteHeader(http.BadRequest)
+	//w.Write([]byte("Invalid call arguments"))
+
+	response := nsi.proposeValidator(nsi.Url, request.ValidatorAddress, request.Vote)
+	json.NewEncoder(w).Encode(response)
+}
+
+// This wrapper is used in event listener for automatic voting
+func (nsi *NodeServiceImpl) VoteValidator(validatorAddress string) {
+	log.Info("Aut. VoteValidator function invoked. Validator: ", validatorAddress)
+	nsi.proposeValidator(nsi.Url, validatorAddress, true)
+}
+
+// This wrapper is used in event listener for automatic unvoting
+func (nsi *NodeServiceImpl) UnvoteValidator(validatorAddress string) {
+	log.Info("Aut. UnvoteValidator function invoked. Validator: ", validatorAddress)
+	nsi.proposeValidator(nsi.Url, validatorAddress, false)
+}
 
 func (nsi *NodeServiceImpl) IPWhitelister() {
 	go func() {
@@ -169,7 +192,11 @@ func (nsi *NodeServiceImpl) GetGenesisHandler(w http.ResponseWriter, r *http.Req
 
 	log.Info(fmt.Sprint("Join request received from node: ", nodename, " with IP: ", foreignIP, ", enode: ", enode, ", accPubKey: ", accPubKey, " and chainID: ", chainID))
 
-	if peerMap[enode] == "YES" || litioncontractclient.IsAllowedUser(chainID, accPubKey) {
+	hasVested, err := nsi.LitionContractClient.AccHasVested(accPubKey)
+	if err != nil {
+		log.Error("Lition sc AccHasVested call error: ", err)
+	}
+	if peerMap[enode] == "YES" || hasVested == true {
 		response := nsi.getGenesis(nsi.Url)
 		json.NewEncoder(w).Encode(response)
 	} else if peerMap[enode] == "NO" {

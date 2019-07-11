@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/ybbus/jsonrpc"
@@ -129,15 +130,6 @@ type EthClient struct {
 	Url string
 }
 
-func (ec *EthClient) ProposeValidator(address string, auth bool) {
-	rpcClient := jsonrpc.NewClient(ec.Url)
-	_, err := rpcClient.Call("istanbul_propose", address, auth)
-
-	if err != nil {
-		fmt.Println(err)
-	}
-}
-
 func (ec *EthClient) GetTransactionByHash(txNo string) TransactionDetailsResponse {
 	rpcClient := jsonrpc.NewClient(ec.Url)
 	response, err := rpcClient.Call("eth_getTransactionByHash", txNo)
@@ -151,6 +143,18 @@ func (ec *EthClient) GetTransactionByHash(txNo string) TransactionDetailsRespons
 		fmt.Println(err)
 	}
 	return txResponse
+}
+
+func (ec *EthClient) ProposeValidator(address string, vote bool) error {
+	rpcClient := jsonrpc.NewClient(ec.Url)
+	_, err := rpcClient.Call("istanbul_propose", address, vote)
+
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	return nil
 }
 
 func (ec *EthClient) GetBlockByNumber(blockNo string) BlockDetailsResponse {

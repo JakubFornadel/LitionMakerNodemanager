@@ -271,8 +271,11 @@ func (ec *EthClient) SendTransaction(param contracthandler.ContractParam, rh con
 	response, err = rpcClient.Call("eth_sendTransaction", []interface{}{p})
 
 	if err != nil || response.Error != nil {
-
-		fmt.Println(err)
+		if err != nil {
+			fmt.Println(err)
+		} else {
+			fmt.Println(response.Error)
+		}
 	}
 
 	//fmt.Printf("%s", response.Result)

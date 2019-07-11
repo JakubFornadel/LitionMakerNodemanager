@@ -30,7 +30,7 @@ func main() {
 	listenPort := flag.Int("listenPort", 8000, "descrciption...")
 	infuraURL := flag.String("infuraURL", "wss://ropsten.infura.io/ws", "descrciption...")
 	contractAddress := flag.String("contractAddress", "0xF4f9c1c8D66C8c9c09456BaD6a9890C3caa768c3", "descrciption...")
-	privateKey := flag.String("privateKey", "ach", "descrciption...")
+	privateKey := flag.String("privateKey", "", "descrciption...")
 	chainID := flag.Int("chainID", 0, "descrciption...")
 	miningFlag := flag.Bool("miningFlag", false, "descrciption...")
 	flag.Parse()

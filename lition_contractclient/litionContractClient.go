@@ -2,6 +2,7 @@ package litionContractClient
 
 import (
 	"crypto/ecdsa"
+	"errors"
 	"math/big"
 	"time"
 
@@ -36,12 +37,17 @@ func NewContractClient(ethClientURL string, scAddress string, privateKey string,
 	}
 	contractClient.ethClient = ethClient
 
-	pPrivateKey, err := crypto.HexToECDSA(privateKey)
-	if err != nil {
-		log.Error(err)
-		return nil, err
+	contractClient.privateKey = nil
+	contractClient.auth = nil
+	if privateKey != "" {
+		pPrivateKey, err := crypto.HexToECDSA(privateKey)
+		if err != nil {
+			log.Error(err)
+			return nil, err
+		}
+		contractClient.privateKey = pPrivateKey
+		contractClient.auth = bind.NewKeyedTransactor(contractClient.privateKey)
 	}
-	contractClient.privateKey = pPrivateKey
 
 	contractClient.scAddress = common.HexToAddress(scAddress)
 	contractClient.chainID = chainID
@@ -53,7 +59,6 @@ func NewContractClient(ethClientURL string, scAddress string, privateKey string,
 	}
 	contractClient.scClient = pScClient
 
-	contractClient.auth = bind.NewKeyedTransactor(contractClient.privateKey)
 	contractClient.startMiningEventListener = nil
 	contractClient.stopMiningEventListener = nil
 
@@ -133,6 +138,10 @@ func (contractClient *ContractClient) Start_StopMiningEventListener(f func(strin
 }
 
 func (contractClient *ContractClient) StartMining() error {
+	if contractClient.auth == nil {
+		return errors.New("PrivateKey must be provided for smart contract writes")
+	}
+
 	tx, err := contractClient.scClient.StartMining(contractClient.auth, contractClient.chainID)
 	if err != nil {
 		return err
@@ -142,6 +151,10 @@ func (contractClient *ContractClient) StartMining() error {
 }
 
 func (contractClient *ContractClient) StopMining() error {
+	if contractClient.auth == nil {
+		return errors.New("PrivateKey must be provided for smart contract write")
+	}
+
 	tx, err := contractClient.scClient.StopMining(contractClient.auth, contractClient.chainID)
 	if err != nil {
 		return err

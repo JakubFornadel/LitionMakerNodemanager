@@ -2,12 +2,13 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"math/big"
 	"net/http"
 	"os"
 	"os/signal"
-	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -16,13 +17,7 @@ import (
 	"gitlab.com/lition/quorum-maker-nodemanager/contractclient"
 	litionContractClient "gitlab.com/lition/quorum-maker-nodemanager/lition_contractclient"
 	"gitlab.com/lition/quorum-maker-nodemanager/service"
-
-	"github.com/magiconair/properties"
-	"gitlab.com/lition/quorum-maker-nodemanager/util"
 )
-
-var nodeUrl = "http://localhost:22000"
-var listenPort = ":8000"
 
 func init() {
 	log.SetFormatter(&log.JSONFormatter{})
@@ -31,23 +26,31 @@ func init() {
 }
 
 func main() {
-	if len(os.Args) > 1 {
-		nodeUrl = os.Args[1]
+	nodeUrl := flag.String("nodeUrl", "http://localhost:22000", "descrciption...")
+	listenPort := flag.Int("listenPort", 8000, "descrciption...")
+	infuraURL := flag.String("infuraURL", "wss://ropsten.infura.io/ws", "descrciption...")
+	contractAddress := flag.String("contractAddress", "0xF4f9c1c8D66C8c9c09456BaD6a9890C3caa768c3", "descrciption...")
+	privateKey := flag.String("privateKey", "ach", "descrciption...")
+	chainID := flag.Int("chainID", 0, "descrciption...")
+	miningFlag := flag.Bool("miningFlag", false, "descrciption...")
+	flag.Parse()
+
+	// TODO: rework pk processing
+	if *miningFlag == true && *privateKey == "" {
+		log.Fatal("NodeManager misconfiguration. When miningFlag == true, also private key must be provided.")
 	}
 
-	if len(os.Args) > 2 {
-		listenPort = ":" + os.Args[2]
-	}
+	listenPortStr := ":" + strconv.Itoa(*listenPort)
 
 	// Read Lition Smartcontract client related config parameters from file
-	infuraURL, contractAddress, chainID, privateKey, miningFlag := getContractConfig()
+	//infuraURL, contractAddress, chainID, privateKey, miningFlag := getContractConfig()
 	// Init Lition Smartcontract client
-	litionContractClient, err := litionContractClient.NewContractClient(infuraURL, contractAddress, privateKey, chainID)
+	litionContractClient, err := litionContractClient.NewContractClient(*infuraURL, *contractAddress, *privateKey, big.NewInt(int64(*chainID)))
 	if err != nil {
 		log.Fatal("Unable to init Lition smart contract client")
 	}
 	// Init Lition Smartcontract event listeners
-	if miningFlag == true {
+	if *miningFlag == true {
 		err := litionContractClient.InitListeners()
 		if err != nil {
 			log.Fatal("Unable to init Lition smart contract event listeners")
@@ -55,7 +58,19 @@ func main() {
 	}
 
 	router := mux.NewRouter()
-	nodeService := service.NodeServiceImpl{nodeUrl, litionContractClient}
+	nodeService := service.NodeServiceImpl{*nodeUrl, litionContractClient}
+
+	// Let lition SC know that this node wants to start mining
+	if *miningFlag == true {
+		err := litionContractClient.StartMining()
+		if err != nil {
+			log.Fatal("Unable to start mining. Errr: ", err)
+		}
+
+		// Start standalone event listeners
+		go litionContractClient.Start_StartMiningEventListener(nodeService.VoteValidator)
+		go litionContractClient.Start_StopMiningEventListener(nodeService.UnvoteValidator)
+	}
 
 	ticker := time.NewTicker(86400 * time.Second)
 	go func() {
@@ -66,28 +81,21 @@ func main() {
 		}
 	}()
 
-	// TODO: remove when done testing
-	// Let lition SC know that this node wants to start mining
-	if miningFlag == true {
-		litionContractClient.StartMining()
-
-		// Start standalone event listeners
-		go litionContractClient.Start_StartMiningEventListener(nodeService.VoteValidator)
-		go litionContractClient.Start_StopMiningEventListener(nodeService.UnvoteValidator)
-	}
-
 	go func() {
-		nodeService.CheckGethStatus(nodeUrl)
+		nodeService.CheckGethStatus(*nodeUrl)
 		//log.Info("Deploying Network Manager Contract")
-		nodeService.NetworkManagerContractDeployer(nodeUrl)
-		nodeService.RegisterNodeDetails(nodeUrl)
-		nodeService.ContractCrawler(nodeUrl)
-		nodeService.ABICrawler(nodeUrl)
+		nodeService.NetworkManagerContractDeployer(*nodeUrl)
+		nodeService.RegisterNodeDetails(*nodeUrl)
+		nodeService.ContractCrawler(*nodeUrl)
+		nodeService.ABICrawler(*nodeUrl)
 		nodeService.IPWhitelister()
 
 		// Let lition SC know that this node wants to start mining
-		if miningFlag == true {
-			litionContractClient.StartMining()
+		if *miningFlag == true {
+			err := litionContractClient.StartMining()
+			if err != nil {
+				log.Fatal("Unable to start mining. Errr: ", err)
+			}
 
 			// Start standalone event listeners
 			go litionContractClient.Start_StartMiningEventListener(nodeService.VoteValidator)
@@ -95,7 +103,7 @@ func main() {
 		}
 	}()
 
-	networkMapService := contractclient.NetworkMapContractClient{EthClient: client.EthClient{nodeUrl}}
+	networkMapService := contractclient.NetworkMapContractClient{EthClient: client.EthClient{*nodeUrl}}
 	router.HandleFunc("/txn/{txn_hash}", nodeService.GetTransactionInfoHandler).Methods("GET")
 	router.HandleFunc("/rmpld/{txn_hash}", nodeService.DeleteTransactionPayloadHandler).Methods("GET")
 	router.HandleFunc("/txn", nodeService.GetLatestTransactionInfoHandler).Methods("GET")
@@ -147,11 +155,11 @@ func main() {
 	router.PathPrefix("/constellation").Handler(http.StripPrefix("/constellation", http.FileServer(http.Dir("/home/node/qdata/constellationLogs"))))
 	router.PathPrefix("/").Handler(http.StripPrefix("/", NewFileServer("NodeManagerUI")))
 
-	log.Info(fmt.Sprintf("Node Manager listening on %s...", listenPort))
+	log.Info(fmt.Sprintf("Node Manager listening on %s...", listenPortStr))
 
 	srv := &http.Server{
 		Handler: router,
-		Addr:    "0.0.0.0" + listenPort,
+		Addr:    "0.0.0.0" + listenPortStr,
 
 		//WriteTimeout: 15 * time.Second,
 		//ReadTimeout:  15 * time.Second,
@@ -205,37 +213,4 @@ func (mf *MyFileServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	mf.handler.ServeHTTP(w, r)
-}
-
-func getContractConfig() (infuraURL string, contractAddress string, chainID *big.Int, privateKey string, miningFlag bool) {
-	// Default values - should not change
-	pInfuraURL := "wss://ropsten.infura.io/ws"
-	pContractAddress := "0xF4f9c1c8D66C8c9c09456BaD6a9890C3caa768c3"
-
-	// TODO: remove when testing done
-	return pInfuraURL, pContractAddress, big.NewInt(0), "5C5D06D3A4F0EB0B90F703CF345C8B4FE209FB0958E884312962F3A24D8218FE", true
-
-	p := properties.MustLoadFile("/home/setup.conf", properties.UTF8)
-
-	if util.PropertyExists("ROLE", "/home/setup.conf") == "" {
-		log.Fatal("\"ROLE\" must be present in config")
-	}
-	pMiningFlag, err := regexp.MatchString("[Vv][Aa][Ll][Ii][Dd][Aa][Tt][Oo][Rr]", util.MustGetString("ROLE", p))
-	if err != nil {
-		log.Fatal("Unable to parse \"ROLE\" config parameter.")
-	}
-
-	if util.PropertyExists("CHAIN_ID", "/home/setup.conf") == "" {
-		log.Fatal("\"CHAIN_ID\" must be present in config")
-	}
-	pChainID := new(big.Int)
-	pChainID, ok := chainID.SetString(util.MustGetString("CHAIN_ID", p), 10)
-	if ok == false {
-		log.Fatal("Unable to parse \"CHAIN_ID\" config parameter.")
-	}
-
-	// TODO: read private key from file
-	pPrivateKey := "5C5D06D3A4F0EB0B90F703CF345C8B4FE209FB0958E884312962F3A24D8218FE"
-
-	return pInfuraURL, pContractAddress, pChainID, pPrivateKey, pMiningFlag
 }

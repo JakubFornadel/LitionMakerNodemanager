@@ -42,8 +42,6 @@ func main() {
 
 	listenPortStr := ":" + strconv.Itoa(*listenPort)
 
-	// Read Lition Smartcontract client related config parameters from file
-	//infuraURL, contractAddress, chainID, privateKey, miningFlag := getContractConfig()
 	// Init Lition Smartcontract client
 	litionContractClient, err := litionContractClient.NewContractClient(*infuraURL, *contractAddress, *privateKey, big.NewInt(int64(*chainID)))
 	if err != nil {
@@ -59,18 +57,6 @@ func main() {
 
 	router := mux.NewRouter()
 	nodeService := service.NodeServiceImpl{*nodeUrl, litionContractClient}
-
-	// Let lition SC know that this node wants to start mining
-	if *miningFlag == true {
-		err := litionContractClient.StartMining()
-		if err != nil {
-			log.Fatal("Unable to start mining. Errr: ", err)
-		}
-
-		// Start standalone event listeners
-		go litionContractClient.Start_StartMiningEventListener(nodeService.VoteValidator)
-		go litionContractClient.Start_StopMiningEventListener(nodeService.UnvoteValidator)
-	}
 
 	ticker := time.NewTicker(86400 * time.Second)
 	go func() {

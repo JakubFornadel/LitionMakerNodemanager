@@ -2,7 +2,6 @@ package client
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/ybbus/jsonrpc"

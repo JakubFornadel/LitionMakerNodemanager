@@ -78,18 +78,22 @@ func (nsi *NodeServiceImpl) GetNmcAddress(w http.ResponseWriter, r *http.Request
 	_ = json.NewDecoder(r.Body).Decode(&request)
 	accAddress := request.AccPubKey
 
-	hasVested, err := nsi.LitionContractClient.AccHasVested(accAddress)
+	var err error
+	var hasVested, hasDeposited bool
+	hasVested, err = nsi.LitionContractClient.AccHasVested(accAddress)
 	if err != nil {
 		log.Error("GetNmcAddress AccHasVested err: ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Internal error"))
 	}
 
-	hasDeposited, err := nsi.LitionContractClient.AccHasDeposited(accAddress)
-	if err != nil {
-		log.Error("GetNmcAddress AccHasDeposited err: ", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Internal error"))
+	if hasVested == false {
+		hasDeposited, err = nsi.LitionContractClient.AccHasDeposited(accAddress)
+		if err != nil {
+			log.Error("GetNmcAddress AccHasDeposited err: ", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("Internal error"))
+		}
 	}
 
 	if hasVested || hasDeposited {

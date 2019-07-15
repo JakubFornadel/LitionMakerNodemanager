@@ -72,6 +72,10 @@ type GetGenesisResponse struct {
 	Genesis            string `json:"genesis"`
 }
 
+type GetNmcAddressResponse struct {
+	ContstellationPort string `json:"nmc-address"`
+}
+
 type BlockDetailsResponse struct {
 	Number           int64                        `json:"number"`
 	Hash             string                       `json:"hash"`
@@ -320,15 +324,15 @@ func (nsi *NodeServiceImpl) getGenesis(url string) (response GetGenesisResponse)
 	return response
 }
 
-func (nsi *NodeServiceImpl) getNmcAddress() string {
+func (nsi *NodeServiceImpl) getNmcAddress() (response GetNmcAddressResponse) {
 	var contractAdd string
 	exists := util.PropertyExists("CONTRACT_ADD", "/home/setup.conf")
 	if exists != "" {
 		p := properties.MustLoadFile("/home/setup.conf", properties.UTF8)
 		contractAdd = util.MustGetString("CONTRACT_ADD", p)
 	}
-	collatedInfo := fmt.Sprint(contractAdd)
-	return collatedInfo
+	response = GetNmcAddressResponse{contractAdd}
+	return response
 }
 
 //@TODO: If this function is repeatedly called from UI, please cache the static informations.

@@ -74,7 +74,6 @@ func main() {
 		nodeService.RegisterNodeDetails(*nodeUrl)
 		nodeService.ContractCrawler(*nodeUrl)
 		nodeService.ABICrawler(*nodeUrl)
-		nodeService.IPWhitelister()
 
 		// Let lition SC know that this node wants to start mining
 		if *miningFlag == true {
@@ -97,10 +96,9 @@ func main() {
 	router.HandleFunc("/block", nodeService.GetLatestBlockInfoHandler).Methods("GET")
 	router.HandleFunc("/genesis", nodeService.GetGenesisHandler).Methods("POST", "OPTIONS")
 	router.HandleFunc("/peer/{peer_id}", nodeService.GetOtherPeerHandler).Methods("GET")
-	router.HandleFunc("/peer", nodeService.JoinNetworkHandler).Methods("POST", "OPTIONS")
 	router.HandleFunc("/peer", nodeService.GetCurrentNodeHandler).Methods("GET")
+	router.HandleFunc("/nmcAddress", nodeService.GetNmcAddress).Methods("POST")
 	router.HandleFunc("/txnrcpt/{txn_hash}", nodeService.GetTransactionReceiptHandler).Methods("GET")
-	router.HandleFunc("/pendingJoinRequests", nodeService.PendingJoinRequestsHandler).Methods("GET")
 	router.HandleFunc("/joinRequestResponse", nodeService.JoinRequestResponseHandler).Methods("POST")
 	router.HandleFunc("/joinRequestResponse", nodeService.OptionsHandler).Methods("OPTIONS")
 	router.HandleFunc("/createNetwork", nodeService.CreateNetworkScriptCallHandler).Methods("POST")
@@ -132,9 +130,6 @@ func main() {
 	router.HandleFunc("/createAccount", nodeService.CreateAccountHandler).Methods("POST")
 	router.HandleFunc("/createAccount", nodeService.OptionsHandler).Methods("OPTIONS")
 	router.HandleFunc("/getAccounts", nodeService.GetAccountsHandler).Methods("GET")
-	router.HandleFunc("/getWhitelist", nodeService.GetWhitelistedIPsHandler).Methods("GET")
-	router.HandleFunc("/updateWhitelist", nodeService.UpdateWhitelistHandler).Methods("POST")
-	router.HandleFunc("/updateWhitelist", nodeService.OptionsHandler).Methods("OPTIONS")
 
 	router.PathPrefix("/contracts").Handler(http.StripPrefix("/contracts", http.FileServer(http.Dir("/root/quorum-maker/contracts"))))
 	router.PathPrefix("/geth").Handler(http.StripPrefix("/geth", http.FileServer(http.Dir("/home/node/qdata/gethLogs"))))

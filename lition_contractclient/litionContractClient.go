@@ -173,3 +173,14 @@ func (contractClient *ContractClient) AccHasVested(userAddressStr string) (bool,
 
 	return hasVested, nil
 }
+
+func (contractClient *ContractClient) AccHasDeposited(userAddressStr string) (bool, error) {
+	userAddress := common.HexToAddress(userAddressStr)
+
+	hasDeposited, err := contractClient.scClient.HasDeposited(&bind.CallOpts{}, contractClient.chainID, userAddress)
+	if err != nil {
+		return false, err
+	}
+
+	return hasDeposited, nil
+}

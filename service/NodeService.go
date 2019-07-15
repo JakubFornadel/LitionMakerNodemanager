@@ -73,7 +73,7 @@ type GetGenesisResponse struct {
 }
 
 type GetNmcAddressResponse struct {
-	ContstellationPort string `json:"nmc-address"`
+	ContstellationPort string `json:"nmcAddress"`
 }
 
 type BlockDetailsResponse struct {

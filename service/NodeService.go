@@ -55,7 +55,6 @@ type NodeInfo struct {
 	Role           string           `json:"role"`
 	BlockNumber    int64            `json:"blockNumber"`
 	PendingTxCount int              `json:"pendingTxCount"`
-	Genesis        string           `json:"genesis"`
 	AdminInfo      client.AdminInfo `json:"adminInfo"`
 }
 
@@ -410,16 +409,8 @@ func (nsi *NodeServiceImpl) getCurrentNode(url string) NodeInfo {
 
 	role = strings.TrimSuffix(role, "\n")
 
-	b, err := ioutil.ReadFile("/home/node/genesis.json")
-
-	if err != nil {
-		//log.Println(err)
-	}
-
-	genesis := string(b)
-	genesis = strings.Replace(genesis, "\n", "", -1)
 	conn := ConnectionInfo{ipAddr, rpcPortInt, enode}
-	responseObj := NodeInfo{nodeName, count, totalCount, activeStatus, conn, role, blockNumberInt, pendingTxCount, genesis, thisAdminInfo}
+	responseObj := NodeInfo{nodeName, count, totalCount, activeStatus, conn, role, blockNumberInt, pendingTxCount, thisAdminInfo}
 	return responseObj
 }
 

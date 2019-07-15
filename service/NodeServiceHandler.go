@@ -127,7 +127,7 @@ func (nsi *NodeServiceImpl) GetGenesisHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	log.Warning("Access denied. Acc has not vested.")
+	log.Info("Access denied. Acc has not vested.")
 	w.WriteHeader(http.StatusForbidden)
 	w.Write([]byte("Access denied"))
 }

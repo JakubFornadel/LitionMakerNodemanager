@@ -82,14 +82,14 @@ func (nsi *NodeServiceImpl) GetNmcAddress(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		log.Error("GetNmcAddress AccHasVested err: ", err)
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Lition SC internal error"))
+		w.Write([]byte("Internal error"))
 	}
 
 	hasDeposited, err := nsi.LitionContractClient.AccHasDeposited(accAddress)
 	if err != nil {
 		log.Error("GetNmcAddress AccHasDeposited err: ", err)
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Lition SC internal error"))
+		w.Write([]byte("Internal error"))
 	}
 
 	if hasVested || hasDeposited {
@@ -117,7 +117,7 @@ func (nsi *NodeServiceImpl) GetGenesisHandler(w http.ResponseWriter, r *http.Req
 	if err != nil {
 		log.Error("GetGenesis AccHasVested call error: ", err)
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Lition SC internal error"))
+		w.Write([]byte("Internal error"))
 		return
 	}
 

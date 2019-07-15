@@ -107,7 +107,7 @@ func (contractClient *ContractClient) Start_StartMiningEventListener(f func(stri
 		if retErr == nil {
 			return
 		}
-		log.Error("Start StartMiningEventListener err: ", retErr, "Try to reinit.")
+		log.Error("Start StartMiningEventListener err: \"", retErr, "\". Try to reinit.")
 
 		// Wait some time before trying to reinit and start listener again
 		time.Sleep(1 * time.Second)
@@ -129,7 +129,7 @@ func (contractClient *ContractClient) Start_StopMiningEventListener(f func(strin
 		if retErr == nil {
 			return
 		}
-		log.Error("Start StopMiningEventListener err: ", retErr, "Try to reinit.")
+		log.Error("Start StopMiningEventListener err: \"", retErr, "\". Try to reinit.")
 
 		// Wait some time before trying to reinit and start listener again
 		time.Sleep(1 * time.Second)

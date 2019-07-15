@@ -63,7 +63,7 @@ func (listener *StartMiningEventListener) Init() error {
 	}
 
 	listener.stopChannel = make(chan struct{})
-	listener.stoppedChannel = make(chan struct{})
+	listener.stoppedChannel = nil // Stopped channel is created and deleted only in start function
 	listener.initialized = true
 
 	return nil
@@ -82,7 +82,7 @@ func (listener *StartMiningEventListener) DeInit() {
 	listener.eventSubs.Unsubscribe()
 	close(listener.eventChannel)
 	close(listener.stopChannel)
-	close(listener.stoppedChannel)
+	// close(listener.stoppedChannel) // stoppned channel is already closed when stopped listening
 	listener.initialized = false
 }
 
@@ -100,8 +100,9 @@ func (listener *StartMiningEventListener) Start(f func(string)) error {
 		return nil
 	}
 
-	log.Info("StartMiningEventListener start listening")
+	listener.stoppedChannel = make(chan struct{})
 	listener.listening = true
+	log.Info("StartMiningEventListener start listening")
 
 	// close the stoppedchan when this func exits
 	defer func() {
@@ -135,6 +136,5 @@ func (listener *StartMiningEventListener) Stop() {
 	// wait for it to have stopped
 	<-listener.stoppedChannel
 	listener.stopChannel = make(chan struct{})
-	listener.stoppedChannel = make(chan struct{})
 	log.Info("StartMiningEventListener successfully stopped")
 }

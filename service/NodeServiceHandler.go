@@ -10,10 +10,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/magiconair/properties"
 	log "github.com/sirupsen/logrus"
 	"gitlab.com/lition/quorum-maker-nodemanager/util"
 )
@@ -48,10 +46,7 @@ type IPList struct {
 }
 
 var pendCount = 0
-var whiteList []string
-var allowedIPs = map[string]bool{}
 var nameMap = map[string]string{}
-var peerMap = map[string]string{}
 var channelMap = make(map[string](chan string))
 
 func (nsi *NodeServiceImpl) ProposeValidator(w http.ResponseWriter, r *http.Request) {
@@ -78,81 +73,33 @@ func (nsi *NodeServiceImpl) UnvoteValidator(validatorAddress string) {
 	nsi.proposeValidator(nsi.Url, validatorAddress, false)
 }
 
-func (nsi *NodeServiceImpl) IPWhitelister() {
-	go func() {
-		if _, err := os.Stat("/root/quorum-maker/contracts/.whiteList"); os.IsNotExist(err) {
-			util.CreateFile("/root/quorum-maker/contracts/.whiteList")
-		}
-		whitelistedIPs, _ := util.File2lines("/root/quorum-maker/contracts/.whiteList")
-		whiteList = append(whiteList, whitelistedIPs...)
-		for _, ip := range whitelistedIPs {
-			allowedIPs[ip] = true
-		}
-		log.Info("Adding whitelisted IPs")
-	}()
-}
-
-func (nsi *NodeServiceImpl) UpdateWhitelistHandler(w http.ResponseWriter, r *http.Request) {
-	var ipList []string
-	_ = json.NewDecoder(r.Body).Decode(&ipList)
-	whiteList = whiteList[:0]
-	for k := range allowedIPs {
-		delete(allowedIPs, k)
-	}
-	for _, ip := range ipList {
-		allowedIPs[ip] = true
-	}
-	whiteList = append(whiteList, ipList...)
-	response := nsi.updateWhitelist(ipList)
-	w.Header().Set("Access-Control-Allow-Credentials", "true")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "OPTIONS, GET, POST")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Depth, User-Agent, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-Control")
-	json.NewEncoder(w).Encode(response)
-}
-
-func (nsi *NodeServiceImpl) GetWhitelistedIPsHandler(w http.ResponseWriter, r *http.Request) {
-	var ipList IPList
-	var connectedIPList []connectedIP
-	var whiteListedIPs []string
-	activeIPs := nsi.getNodeIPs(nsi.Url)
-	for _, ip := range activeIPs {
-		var connected connectedIP
-		connected.IP = ip.IP
-		if allowedIPs[ip.IP] {
-			connected.Whitelisted = true
-		}
-		connected.Count = ip.Count
-		connectedIPList = append(connectedIPList, connected)
-	}
-	for _, ip := range whiteList {
-		whiteListedIPs = append(whiteListedIPs, ip)
-	}
-	ipList.ConnectedList = connectedIPList
-	ipList.WhiteList = whiteListedIPs
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	json.NewEncoder(w).Encode(ipList)
-}
-
-func (nsi *NodeServiceImpl) JoinNetworkHandler(w http.ResponseWriter, r *http.Request) {
+func (nsi *NodeServiceImpl) GetNmcAddress(w http.ResponseWriter, r *http.Request) {
 	var request JoinNetworkRequest
 	_ = json.NewDecoder(r.Body).Decode(&request)
-	enode := request.EnodeID
+	accAddress := request.AccPubKey
 
-	if peerMap[enode] == "" {
-		peerMap[enode] = "PENDING"
+	hasVested, err := nsi.LitionContractClient.AccHasVested(accAddress)
+	if err != nil {
+		log.Error("GetNmcAddress AccHasVested err: ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Lition SC read error"))
 	}
 
-	if peerMap[enode] == "YES" {
-		response := nsi.joinNetwork(enode, nsi.Url)
+	hasDeposited, err := nsi.LitionContractClient.AccHasDeposited(accAddress)
+	if err != nil {
+		log.Error("GetNmcAddress AccHasDeposited err: ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Lition SC read error"))
+	}
+
+	if hasVested || hasDeposited {
+		response := nsi.getNmcAddress()
 		json.NewEncoder(w).Encode(response)
-	} else if peerMap[enode] == "NO" {
-		w.WriteHeader(http.StatusForbidden)
-		w.Write([]byte("Access denied"))
-	} else {
-		w.WriteHeader(http.StatusAccepted)
-		w.Write([]byte("Pending user response"))
+		return
 	}
+
+	w.WriteHeader(http.StatusForbidden)
+	w.Write([]byte("Permissoon denied"))
 }
 
 func (nsi *NodeServiceImpl) GetGenesisHandler(w http.ResponseWriter, r *http.Request) {
@@ -164,118 +111,25 @@ func (nsi *NodeServiceImpl) GetGenesisHandler(w http.ResponseWriter, r *http.Req
 	accPubKey := request.AccPubKey
 	chainID := request.ChainID
 
-	//recipients := strings.Split(mailServerConfig.RecipientList, ",")
-	if allowedIPs[foreignIP] {
-		peerMap[enode] = "YES"
-		exists := util.PropertyExists("RECIPIENTLIST", "/home/setup.conf")
-		if exists != "" {
-			go func() {
-				b, err := ioutil.ReadFile("/root/quorum-maker/JoinRequestTemplate.txt")
-
-				if err != nil {
-					log.Println(err)
-				}
-
-				mailCont := string(b)
-				mailCont = strings.Replace(mailCont, "\n", "", -1)
-
-				p := properties.MustLoadFile("/home/setup.conf", properties.UTF8)
-				recipientList := util.MustGetString("RECIPIENTLIST", p)
-				recipients := strings.Split(recipientList, ",")
-				for i := 0; i < len(recipients); i++ {
-					message := fmt.Sprintf(mailCont, nodename, enode, foreignIP)
-					nsi.sendMail(mailServerConfig.Host, mailServerConfig.Port, mailServerConfig.Username, mailServerConfig.Password, "Incoming Join Request", message, recipients[i])
-				}
-			}()
-		}
-	}
-
 	log.Info(fmt.Sprint("Join request received from node: ", nodename, " with IP: ", foreignIP, ", enode: ", enode, ", accPubKey: ", accPubKey, " and chainID: ", chainID))
 
 	hasVested, err := nsi.LitionContractClient.AccHasVested(accPubKey)
 	if err != nil {
-		log.Error("Lition sc AccHasVested call error: ", err)
+		log.Error("GetGenesis AccHasVested call error: ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Lition SC read error"))
+		return
 	}
-	if peerMap[enode] == "YES" || hasVested == true {
+
+	if hasVested == true {
 		response := nsi.getGenesis(nsi.Url)
 		json.NewEncoder(w).Encode(response)
-	} else if peerMap[enode] == "NO" {
-		w.WriteHeader(http.StatusForbidden)
-		w.Write([]byte("Access denied"))
-	} else {
-		exists := util.PropertyExists("RECIPIENTLIST", "/home/setup.conf")
-		if exists != "" {
-			go func() {
-				b, err := ioutil.ReadFile("/root/quorum-maker/JoinRequestTemplate.txt")
-
-				if err != nil {
-					log.Println(err)
-				}
-
-				mailCont := string(b)
-				mailCont = strings.Replace(mailCont, "\n", "", -1)
-
-				p := properties.MustLoadFile("/home/setup.conf", properties.UTF8)
-				recipientList := util.MustGetString("RECIPIENTLIST", p)
-				recipients := strings.Split(recipientList, ",")
-				for i := 0; i < len(recipients); i++ {
-					message := fmt.Sprintf(mailCont, nodename, enode, foreignIP)
-					nsi.sendMail(mailServerConfig.Host, mailServerConfig.Port, mailServerConfig.Username, mailServerConfig.Password, "Incoming Join Request", message, recipients[i])
-				}
-			}()
-		}
-		var cUIresp = make(chan string, 1)
-		channelMap[enode] = cUIresp
-		nameMap[enode] = nodename
-		if peerMap[enode] == "" {
-			peerMap[enode] = "PENDING"
-		}
-
-		//go func() {
-		//	fmt.Println("Request for Joining this network from", nodename, "with Enode", enode, "from IP", foreignIP, "Do you approve ? y/N")
-		//
-		//	reader := bufio.NewReader(os.Stdin)
-		//	reply, _ := reader.ReadString('\n')
-		//	stop := timer.Stop()
-		//	if stop {
-		//		//fmt.Println("Timer stopped: Ticket ", ticket)
-		//	}
-		//	reader.Reset(os.Stdin)
-		//	reply = strings.TrimSuffix(reply, "\n")
-		//	if reply == "y" || reply == "Y" {
-		//		peerMap[enode] = "YES"
-		//		response := nsi.getGenesis(nsi.Url)
-		//		json.NewEncoder(w).Encode(response)
-		//	} else {
-		//		peerMap[enode] = "NO"
-		//		w.WriteHeader(http.StatusForbidden)
-		//		w.Write([]byte("Access denied"))
-		//	}
-		//	cCLI <- fmt.Sprintf("CLI resp: Ticket %d", ticket)
-		//}()
-
-		select {
-		//case <-cCLI:
-		//fmt.Println(resCLI)
-		case uiResp := <-cUIresp:
-			if uiResp == "YES" {
-				response := nsi.getGenesis(nsi.Url)
-				json.NewEncoder(w).Encode(response)
-			} else if uiResp == "NO" {
-				w.WriteHeader(http.StatusForbidden)
-				w.Write([]byte("Access denied"))
-			} else {
-				w.WriteHeader(http.StatusAccepted)
-				w.Write([]byte("Pending user response"))
-			}
-			//fmt.Println(resUI)
-		case <-time.After(time.Second * 300):
-			//fmt.Println("Response Timed Out")
-			w.WriteHeader(http.StatusAccepted)
-			w.Write([]byte("Pending user response"))
-			//fmt.Println(resTimer)
-		}
+		return
 	}
+
+	log.Info("Access denied. Acc has not vested.")
+	w.WriteHeader(http.StatusForbidden)
+	w.Write([]byte("Access denied"))
 }
 
 func (nsi *NodeServiceImpl) JoinRequestResponseHandler(w http.ResponseWriter, r *http.Request) {
@@ -363,36 +217,6 @@ func (nsi *NodeServiceImpl) GetTransactionReceiptHandler(w http.ResponseWriter, 
 	response := nsi.getTransactionReceipt(params["txn_hash"], nsi.Url)
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	json.NewEncoder(w).Encode(response)
-}
-
-func (nsi *NodeServiceImpl) PendingJoinRequestsHandler(w http.ResponseWriter, r *http.Request) {
-	size := 0
-	for key := range peerMap {
-		if peerMap[key] == "PENDING" {
-			size++
-		}
-	}
-	pendingRequests := make([]PendingRequests, size)
-	i := 1
-	for key := range peerMap {
-		if peerMap[key] == "PENDING" {
-			var enodeString []string
-			var ipString []string
-			pendingRequests[i-1].NodeName = nameMap[key]
-			pendingRequests[i-1].Enode = key
-			enode := strings.TrimPrefix(key, "enode://")
-			enodeString = strings.Split(enode, "@")
-			enodeVal := enodeString[0]
-			ipString = strings.Split(enodeString[1], ":")
-			ip := ipString[0]
-			pendingRequests[i-1].Message = fmt.Sprintf("Request for joining network from node %s", nameMap[key])
-			pendingRequests[i-1].EnodeID = fmt.Sprintf("%s", enodeVal)
-			pendingRequests[i-1].IP = fmt.Sprintf("%s", ip)
-			i++
-		}
-	}
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	json.NewEncoder(w).Encode(pendingRequests)
 }
 
 func (nsi *NodeServiceImpl) DeployContractHandler(w http.ResponseWriter, r *http.Request) {

@@ -320,11 +320,7 @@ func (nsi *NodeServiceImpl) getGenesis(url string) (response GetGenesisResponse)
 	return response
 }
 
-func (nsi *NodeServiceImpl) joinNetwork(enode string, url string) string {
-	// var nodeUrl = url
-	// ethClient := client.EthClient{nodeUrl}
-	// probably remove whole function
-
+func (nsi *NodeServiceImpl) getNmcAddress() string {
 	var contractAdd string
 	exists := util.PropertyExists("CONTRACT_ADD", "/home/setup.conf")
 	if exists != "" {
@@ -757,7 +753,6 @@ func calculateTimeElapsed(txnDetails *TransactionReceiptResponse, url string) {
 
 func (nsi *NodeServiceImpl) joinRequestResponse(enode string, status string) SuccessResponse {
 	var successResponse SuccessResponse
-	peerMap[enode] = status
 	var enodeString []string
 	var ipString []string
 
@@ -1795,15 +1790,4 @@ func (nsi *NodeServiceImpl) getNodeIPs(url string) []connectedIP {
 		ipList = append(ipList, connected)
 	}
 	return ipList
-}
-
-func (nsi *NodeServiceImpl) updateWhitelist(ipList []string) SuccessResponse {
-	var update SuccessResponse
-	util.DeleteFile("/root/quorum-maker/contracts/.whiteList")
-	util.CreateFile("/root/quorum-maker/contracts/.whiteList")
-	for _, ip := range ipList {
-		util.AppendStringToFile("/root/quorum-maker/contracts/.whiteList", fmt.Sprint(ip, "\n"))
-	}
-	update.Status = "IP Whitelist has been updated successfully"
-	return update
 }

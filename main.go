@@ -160,6 +160,9 @@ func main() {
 
 	// Block until we receive our signal.
 	<-c
+	// Stop mining
+	litionContractClient.StopMining()
+
 	// Deinit lition smart contract cliet
 	litionContractClient.DeInit()
 

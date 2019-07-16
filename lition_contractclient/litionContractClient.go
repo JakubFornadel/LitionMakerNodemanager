@@ -96,44 +96,66 @@ func (contractClient *ContractClient) DeInit() {
 func (contractClient *ContractClient) Start_StartMiningEventListener(f func(string)) {
 	listener := contractClient.startMiningEventListener
 	if listener == nil {
-		log.Fatal("Trying to start \"StartMining\" listener without previous initialization")
+		log.Fatal("Trying to start 'StartMining' listener without previous initialization")
 		return
 	}
 
 	// Infinite loop - try to initialze listeners until it succeeds
+	initialized := true
 	for {
-		retErr := listener.Start(f)
-		// Listener was manually stopped, do not try to start it again
-		if retErr == nil {
-			return
+		if initialized == true {
+			retErr := listener.Start(f)
+			// Listener was manually stopped, do not try to start it again
+			if retErr == nil {
+				return
+			}
+			log.Error("Start StartMiningEventListener err: '", retErr, "'. Try to reinit.")
 		}
-		log.Error("Start StartMiningEventListener err: \"", retErr, "\". Try to reinit.")
 
 		// Wait some time before trying to reinit and start listener again
 		time.Sleep(1 * time.Second)
-		listener.ReInit()
+
+		err := listener.ReInit()
+		if err == nil {
+			log.Info("Reinit successfull")
+			initialized = true
+		} else {
+			log.Error("Reinit fail")
+			initialized = false
+		}
 	}
 }
 
 func (contractClient *ContractClient) Start_StopMiningEventListener(f func(string)) {
 	listener := contractClient.stopMiningEventListener
 	if listener == nil {
-		log.Fatal("Trying to start \"StopMining\" listener without previous initialization")
+		log.Fatal("Trying to start StopMining listener without previous initialization")
 		return
 	}
 
 	// Infinite loop - try to initialze listeners until it succeeds
+	initialized := true
 	for {
-		retErr := listener.Start(f)
-		// Listener was manually stopped, do not try to start it again
-		if retErr == nil {
-			return
+		if initialized == true {
+			retErr := listener.Start(f)
+			// Listener was manually stopped, do not try to start it again
+			if retErr == nil {
+				return
+			}
+			log.Error("Start StopMiningEventListener err: '", retErr, "'. Try to reinit.")
 		}
-		log.Error("Start StopMiningEventListener err: \"", retErr, "\". Try to reinit.")
 
 		// Wait some time before trying to reinit and start listener again
 		time.Sleep(1 * time.Second)
-		listener.ReInit()
+
+		err := listener.ReInit()
+		if err == nil {
+			log.Info("Reinit successfull")
+			initialized = true
+		} else {
+			log.Error("Reinit fail")
+			initialized = false
+		}
 	}
 }
 
@@ -146,7 +168,7 @@ func (contractClient *ContractClient) StartMining() error {
 	if err != nil {
 		return err
 	}
-	log.Info("Transaction \"startMining\" TX: ", tx.Hash())
+	log.Info("Transaction 'startMining' TX: ", tx.Hash())
 	return nil
 }
 
@@ -159,7 +181,7 @@ func (contractClient *ContractClient) StopMining() error {
 	if err != nil {
 		return err
 	}
-	log.Info("Transaction \"stopMining\" TX: ", tx.Hash())
+	log.Info("Transaction 'stopMining' TX: ", tx.Hash())
 	return nil
 }
 

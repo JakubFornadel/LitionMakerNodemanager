@@ -86,9 +86,9 @@ func (listener *StopMiningEventListener) DeInit() {
 	listener.initialized = false
 }
 
-func (listener *StopMiningEventListener) ReInit() {
+func (listener *StopMiningEventListener) ReInit() error {
 	listener.DeInit()
-	listener.Init()
+	return listener.Init()
 }
 
 func (listener *StopMiningEventListener) Start(f func(string)) error {

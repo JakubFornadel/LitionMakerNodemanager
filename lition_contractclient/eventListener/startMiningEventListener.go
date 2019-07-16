@@ -86,17 +86,17 @@ func (listener *StartMiningEventListener) DeInit() {
 	listener.initialized = false
 }
 
-func (listener *StartMiningEventListener) ReInit() {
+func (listener *StartMiningEventListener) ReInit() error {
 	listener.DeInit()
-	listener.Init()
+	return listener.Init()
 }
 
 func (listener *StartMiningEventListener) Start(f func(string)) error {
 	if listener.initialized == false {
-		return errors.New("Trying to Start \"StartMiningEventListener\" without previous initialization")
+		return errors.New("Trying to Start 'StartMiningEventListener' without previous initialization")
 	}
 	if listener.listening == true {
-		log.Warning("Trying to Start \"StartMiningEventListener\", which is already listening.")
+		log.Warning("Trying to Start 'StartMiningEventListener', which is already listening.")
 		return nil
 	}
 
@@ -113,7 +113,7 @@ func (listener *StartMiningEventListener) Start(f func(string)) error {
 	for {
 		select {
 		case event := <-listener.eventChannel:
-			log.Info("New \"StartMining\" event received.")
+			log.Info("New 'StartMining' event received.")
 			f(event.Miner.String())
 		case err := <-listener.eventSubs.Err():
 			return err

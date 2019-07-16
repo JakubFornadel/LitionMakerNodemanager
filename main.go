@@ -160,8 +160,13 @@ func main() {
 
 	// Block until we receive our signal.
 	<-c
-	// Stop mining
-	litionContractClient.StopMining()
+
+	if *miningFlag == true {
+		// Stop mining
+		litionContractClient.StopMining()
+		// Unvote itself
+		nodeService.UnvoteValidator(litionContractClient.GetPubKeyStr())
+	}
 
 	// Deinit lition smart contract cliet
 	litionContractClient.DeInit()

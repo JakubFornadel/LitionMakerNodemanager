@@ -19,6 +19,7 @@ import (
 // ContractClient contains variables needed for communication with lition smart contract
 type ContractClient struct {
 	ethClient                *ethclient.Client
+	publicKey                ecdsa.PublicKey
 	privateKey               *ecdsa.PrivateKey
 	auth                     *bind.TransactOpts
 	scAddress                common.Address
@@ -46,6 +47,7 @@ func NewContractClient(ethClientURL string, scAddress string, privateKey string,
 			return nil, err
 		}
 		contractClient.privateKey = pPrivateKey
+		contractClient.publicKey = contractClient.privateKey.PublicKey
 		contractClient.auth = bind.NewKeyedTransactor(contractClient.privateKey)
 	}
 
@@ -205,4 +207,8 @@ func (contractClient *ContractClient) AccHasDeposited(userAddressStr string) (bo
 	}
 
 	return hasDeposited, nil
+}
+
+func (contractClient *ContractClient) GetPubKeyStr() string {
+	return crypto.PubkeyToAddress(contractClient.publicKey).String()
 }

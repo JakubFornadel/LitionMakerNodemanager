@@ -2,7 +2,7 @@ package contracthandler
 
 import (
 	"bytes"
-	"gitlab.com/lition/quorum-maker-nodemanager/util"
+	"gitlab.com/lition/lition-maker-nodemanager/util"
 	"strings"		
 )
 

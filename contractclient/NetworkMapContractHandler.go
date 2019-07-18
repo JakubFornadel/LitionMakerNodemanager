@@ -8,8 +8,8 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/magiconair/properties"
-	"gitlab.com/lition/quorum-maker-nodemanager/contracthandler"
-	"gitlab.com/lition/quorum-maker-nodemanager/util"
+	"gitlab.com/lition/lition-maker-nodemanager/contracthandler"
+	"gitlab.com/lition/lition-maker-nodemanager/util"
 )
 
 type NodeDetailsSelf struct {

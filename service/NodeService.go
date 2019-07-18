@@ -15,11 +15,11 @@ import (
 
 	"github.com/magiconair/properties"
 	log "github.com/sirupsen/logrus"
-	"gitlab.com/lition/quorum-maker-nodemanager/client"
-	"gitlab.com/lition/quorum-maker-nodemanager/contractclient"
-	"gitlab.com/lition/quorum-maker-nodemanager/contracthandler"
-	litionContractClient "gitlab.com/lition/quorum-maker-nodemanager/lition_contractclient"
-	"gitlab.com/lition/quorum-maker-nodemanager/util"
+	"gitlab.com/lition/lition-maker-nodemanager/client"
+	"gitlab.com/lition/lition-maker-nodemanager/contractclient"
+	"gitlab.com/lition/lition-maker-nodemanager/contracthandler"
+	litionContractClient "gitlab.com/lition/lition-maker-nodemanager/lition_contractclient"
+	"gitlab.com/lition/lition-maker-nodemanager/util"
 	"gopkg.in/gomail.v2"
 )
 
@@ -1179,7 +1179,7 @@ func (nsi *NodeServiceImpl) healthCheck(url string) {
 				recipientList := util.MustGetString("RECIPIENTLIST", p)
 				recipients := strings.Split(recipientList, ",")
 
-				b, err := ioutil.ReadFile("/root/quorum-maker/NodeUnavailableTemplate.txt")
+				b, err := ioutil.ReadFile("/root/lition-maker/NodeUnavailableTemplate.txt")
 
 				if err != nil {
 					log.Println(err)
@@ -1205,7 +1205,7 @@ func (nsi *NodeServiceImpl) sendTestMail() {
 		nodename := util.MustGetString("NODENAME", p)
 		recipientList := util.MustGetString("RECIPIENTLIST", p)
 		recipients := strings.Split(recipientList, ",")
-		b, err := ioutil.ReadFile("/root/quorum-maker/TestMailTemplate.txt")
+		b, err := ioutil.ReadFile("/root/lition-maker/TestMailTemplate.txt")
 		if err != nil {
 			log.Println(err)
 		}
@@ -1497,7 +1497,7 @@ func (nsi *NodeServiceImpl) getContracts(url string) {
 }
 
 func (nsi *NodeServiceImpl) attachModeRegisterDetails(url string, contractAdd string) {
-	nmcBytecode, err := ioutil.ReadFile("/root/quorum-maker/nmcBytecode")
+	nmcBytecode, err := ioutil.ReadFile("/root/lition-maker/nmcBytecode")
 	if err != nil {
 		log.Println(err)
 	}
@@ -1605,7 +1605,7 @@ func (nsi *NodeServiceImpl) ABICrawler(url string) {
 
 func (nsi *NodeServiceImpl) DirectoryCrawl() {
 	abiCrawlerMutex = 1
-	ABIList := getFilesFromDirectory("/root/quorum-maker/contracts")
+	ABIList := getFilesFromDirectory("/root/lition-maker/contracts")
 	nsi.populateABIMap(ABIList)
 	abiCrawlerMutex = 0
 	updateLastCheckedTime(strconv.Itoa(int(time.Now().Unix())))
@@ -1723,7 +1723,7 @@ func (nsi *NodeServiceImpl) writeContractDetailsToDisk(data string, bytecodeData
 }
 
 func getLastCheckedTime() int64 {
-	fileBytes, err := ioutil.ReadFile("/root/quorum-maker/contracts/.lastCheckedTime")
+	fileBytes, err := ioutil.ReadFile("/root/lition-maker/contracts/.lastCheckedTime")
 	if err != nil {
 		log.Println(err)
 	}
@@ -1734,9 +1734,9 @@ func getLastCheckedTime() int64 {
 }
 
 func updateLastCheckedTime(timeVal string) {
-	util.DeleteFile("/root/quorum-maker/contracts/.lastCheckedTime")
-	util.CreateFile("/root/quorum-maker/contracts/.lastCheckedTime")
-	util.WriteFile("/root/quorum-maker/contracts/.lastCheckedTime", timeVal)
+	util.DeleteFile("/root/lition-maker/contracts/.lastCheckedTime")
+	util.CreateFile("/root/lition-maker/contracts/.lastCheckedTime")
+	util.WriteFile("/root/lition-maker/contracts/.lastCheckedTime", timeVal)
 }
 
 func (nsi *NodeServiceImpl) createAccount(password string, url string) SuccessResponse {

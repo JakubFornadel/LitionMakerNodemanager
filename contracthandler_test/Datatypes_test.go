@@ -2,7 +2,8 @@ package contracthandler_test
 
 import (
 	"testing"
-	"github.com/synechron-finlabs/quorum-maker-nodemanager/contracthandler"
+
+	"gitlab.com/lition/lition-maker-nodemanager/contracthandler"
 )
 
 func TestIsSuported(t *testing.T) {
@@ -16,10 +17,9 @@ func TestIsSuported(t *testing.T) {
 
 }
 
-
 func getDatatypesTestData() []string {
 
-	data := []string {
+	data := []string{
 		"Func(uint256)",
 		"uint256",
 		"uint256,address",

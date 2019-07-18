@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"fmt"
 	"strings"
-	"gitlab.com/lition/quorum-maker-nodemanager/contractclient"
+	"gitlab.com/lition/lition-maker-nodemanager/contractclient"
 )
 
 type test_data struct {

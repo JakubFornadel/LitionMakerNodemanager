@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/ybbus/jsonrpc"
-	"gitlab.com/lition/quorum-maker-nodemanager/contracthandler"
+	"gitlab.com/lition/lition-maker-nodemanager/contracthandler"
 )
 
 type AdminInfo struct {

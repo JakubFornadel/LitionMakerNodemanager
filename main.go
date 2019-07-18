@@ -13,10 +13,10 @@ import (
 
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
-	"gitlab.com/lition/quorum-maker-nodemanager/client"
-	"gitlab.com/lition/quorum-maker-nodemanager/contractclient"
-	litionContractClient "gitlab.com/lition/quorum-maker-nodemanager/lition_contractclient"
-	"gitlab.com/lition/quorum-maker-nodemanager/service"
+	"gitlab.com/lition/lition-maker-nodemanager/client"
+	"gitlab.com/lition/lition-maker-nodemanager/contractclient"
+	litionContractClient "gitlab.com/lition/lition-maker-nodemanager/lition_contractclient"
+	"gitlab.com/lition/lition-maker-nodemanager/service"
 )
 
 func init() {
@@ -131,7 +131,7 @@ func main() {
 	router.HandleFunc("/createAccount", nodeService.OptionsHandler).Methods("OPTIONS")
 	router.HandleFunc("/getAccounts", nodeService.GetAccountsHandler).Methods("GET")
 
-	router.PathPrefix("/contracts").Handler(http.StripPrefix("/contracts", http.FileServer(http.Dir("/root/quorum-maker/contracts"))))
+	router.PathPrefix("/contracts").Handler(http.StripPrefix("/contracts", http.FileServer(http.Dir("/root/lition-maker/contracts"))))
 	router.PathPrefix("/geth").Handler(http.StripPrefix("/geth", http.FileServer(http.Dir("/home/node/qdata/gethLogs"))))
 	router.PathPrefix("/constellation").Handler(http.StripPrefix("/constellation", http.FileServer(http.Dir("/home/node/qdata/constellationLogs"))))
 	router.PathPrefix("/").Handler(http.StripPrefix("/", NewFileServer("NodeManagerUI")))

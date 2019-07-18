@@ -1,8 +1,8 @@
 package contractclient
 
 import (
-	"gitlab.com/lition/quorum-maker-nodemanager/client"
-	"gitlab.com/lition/quorum-maker-nodemanager/contracthandler"
+	"gitlab.com/lition/lition-maker-nodemanager/client"
+	"gitlab.com/lition/lition-maker-nodemanager/contracthandler"
 )
 
 const registerNodeFunSig = "0x82cb1a2a"

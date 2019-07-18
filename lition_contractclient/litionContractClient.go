@@ -13,7 +13,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	lition "gitlab.com/lition/lition_contracts/contracts/go_wrapper"
-	eventListener "gitlab.com/lition/quorum-maker-nodemanager/lition_contractclient/eventListener"
+	eventListener "gitlab.com/lition/lition-maker-nodemanager/lition_contractclient/eventListener"
 )
 
 // ContractClient contains variables needed for communication with lition smart contract

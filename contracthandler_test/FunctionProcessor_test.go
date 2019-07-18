@@ -1,11 +1,12 @@
 package contracthandler_test
 
 import (
-	"github.com/synechron-finlabs/quorum-maker-nodemanager/util"
 	"reflect"
 	"testing"
 	"time"
-	"github.com/synechron-finlabs/quorum-maker-nodemanager/contracthandler"
+
+	"gitlab.com/lition/lition-maker-nodemanager/contracthandler"
+	"gitlab.com/lition/lition-maker-nodemanager/util"
 )
 
 func TestGetData(t *testing.T) {

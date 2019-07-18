@@ -13,7 +13,7 @@ import (
 
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
-	"gitlab.com/lition/quorum-maker-nodemanager/util"
+	"gitlab.com/lition/lition-maker-nodemanager/util"
 )
 
 type contractJSON struct {

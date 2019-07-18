@@ -3,7 +3,7 @@ package contracthandler
 import (
 	"bytes"
 	"encoding/hex"
-	"gitlab.com/lition/quorum-maker-nodemanager/util"
+	"gitlab.com/lition/lition-maker-nodemanager/util"
 	"regexp"
 	"strings"
 )

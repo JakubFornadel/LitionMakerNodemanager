@@ -2,9 +2,9 @@ package contractclient
 
 import (
 	"fmt"
-	"gitlab.com/lition/quorum-maker-nodemanager/client"
-	"gitlab.com/lition/quorum-maker-nodemanager/contracthandler"
-	"gitlab.com/lition/quorum-maker-nodemanager/util"
+	"gitlab.com/lition/lition-maker-nodemanager/client"
+	"gitlab.com/lition/lition-maker-nodemanager/contracthandler"
+	"gitlab.com/lition/lition-maker-nodemanager/util"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"

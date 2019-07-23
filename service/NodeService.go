@@ -458,8 +458,8 @@ func (nsi *NodeServiceImpl) getBlockInfo(blockno int64, url string) BlockDetails
 	blockResponseClient := ethClient.GetBlockByNumber(bNoHex)
 	currentTime := time.Now().Unix()
 	creationTime := util.HexStringtoInt64(blockResponseClient.Timestamp)
-	creationTimeUnix := creationTime / 1000000000
-	elapsedTime := currentTime - creationTimeUnix
+	// creationTimeUnix := creationTime / 1000000000
+	elapsedTime := currentTime - creationTime
 	blockResponse.TimeElapsed = elapsedTime
 
 	//@TODO: Create a utility function to convert block object to readable object.

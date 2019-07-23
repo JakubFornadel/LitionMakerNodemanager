@@ -1471,7 +1471,7 @@ func (nsi *NodeServiceImpl) getContracts(url string) {
 					}
 				}
 				contSenderMap[txGetClient.ContractAddress] = clientTransactions.From
-				contTimeMap[txGetClient.ContractAddress] = strconv.Itoa(util.HexStringtoInt64(blockResponseClient.Timestamp))
+				contTimeMap[txGetClient.ContractAddress] = strconv.Itoa(int(util.HexStringtoInt64(blockResponseClient.Timestamp)))
 			}
 		}
 	}

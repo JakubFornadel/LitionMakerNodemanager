@@ -458,7 +458,6 @@ func (nsi *NodeServiceImpl) getBlockInfo(blockno int64, url string) BlockDetails
 	blockResponseClient := ethClient.GetBlockByNumber(bNoHex)
 	currentTime := time.Now().Unix()
 	creationTime := util.HexStringtoInt64(blockResponseClient.Timestamp)
-	// creationTimeUnix := creationTime / 1000000000
 	elapsedTime := currentTime - creationTime
 	blockResponse.TimeElapsed = elapsedTime
 
@@ -521,8 +520,7 @@ func (nsi *NodeServiceImpl) getLatestBlockInfo(count string, reference string, u
 		blockResponse[blockNumber-i].Hash = blockResponseClient.Hash
 		currentTime := time.Now().Unix()
 		creationTime := util.HexStringtoInt64(blockResponseClient.Timestamp)
-		creationTimeUnix := creationTime / 1000000000
-		elapsedTime := currentTime - creationTimeUnix
+		elapsedTime := currentTime - creationTime
 		blockResponse[blockNumber-i].TimeElapsed = elapsedTime
 		txnNo := len(blockResponseClient.Transactions)
 		txResponse := make([]TransactionDetailsResponse, txnNo)
@@ -554,8 +552,7 @@ func (nsi *NodeServiceImpl) getLatestTransactionInfo(count string, url string) [
 		blockResponseClient := ethClient.GetBlockByNumber(bNoHex)
 		currentTime := time.Now().Unix()
 		creationTime := util.HexStringtoInt64(blockResponseClient.Timestamp)
-		creationTimeUnix := creationTime / 1000000000
-		elapsedTime := currentTime - creationTimeUnix
+		elapsedTime := currentTime - creationTime
 		blockResponse[blockNumber-i].TimeElapsed = elapsedTime
 		blockResponse[blockNumber-i].Number = util.HexStringtoInt64(blockResponseClient.Number)
 		txnNo := len(blockResponseClient.Transactions)
@@ -586,8 +583,7 @@ func (nsi *NodeServiceImpl) getTransactionInfo(txno string, url string) Transact
 	blockResponseClient := ethClient.GetBlockByNumber(txResponseClient.BlockNumber)
 	currentTime := time.Now().Unix()
 	creationTime := util.HexStringtoInt64(blockResponseClient.Timestamp)
-	creationTimeUnix := creationTime / 1000000000
-	elapsedTime := currentTime - creationTimeUnix
+	elapsedTime := currentTime - creationTime
 	txResponse.TimeElapsed = elapsedTime
 	return txResponse
 }
@@ -657,8 +653,7 @@ func populateTransactionObject(txno string, url string) TransactionReceiptRespon
 	blockResponseClient := ethClient.GetBlockByNumber(getTransactionReceipt.BlockNumber)
 	currentTime := time.Now().Unix()
 	creationTime := util.HexStringtoInt64(blockResponseClient.Timestamp)
-	creationTimeUnix := creationTime / 1000000000
-	elapsedTime := currentTime - creationTimeUnix
+	elapsedTime := currentTime - creationTime
 	txResponse.TimeElapsed = elapsedTime
 	return txResponse
 }
@@ -750,8 +745,7 @@ func calculateTimeElapsed(txnDetails *TransactionReceiptResponse, url string) {
 	blockResponseClient := ethClient.GetBlockByNumber(getTransactionReceipt.BlockNumber)
 	currentTime := time.Now().Unix()
 	creationTime := util.HexStringtoInt64(blockResponseClient.Timestamp)
-	creationTimeUnix := creationTime / 1000000000
-	elapsedTime := currentTime - creationTimeUnix
+	elapsedTime := currentTime - creationTime
 	txnDetails.TimeElapsed = elapsedTime
 }
 
@@ -1050,8 +1044,7 @@ func (nsi *NodeServiceImpl) latestBlockDetails(url string) LatestBlockResponse {
 	blockNumberInt := util.HexStringtoInt64(blockNumber)
 	creationTime := blockResponseClient.Timestamp
 	creationTimeInt := util.HexStringtoInt64(creationTime)
-	creationTimeUnix := creationTimeInt / 1000000000
-	elapsedTime := currentTime - creationTimeUnix
+	elapsedTime := currentTime - creationTimeInt
 	latestBlockResponse.LatestBlockNumber = blockNumberInt
 	latestBlockResponse.TimeElapsed = elapsedTime
 	return latestBlockResponse
@@ -1397,8 +1390,7 @@ func (nsi *NodeServiceImpl) GetChartData(url string) []ChartInfo {
 	lastBlockNoHex := strconv.FormatInt(currentBlockNumber, 16)
 	lastBNoHex := fmt.Sprint("0x", lastBlockNoHex)
 	blockResponseClient := ethClient.GetBlockByNumber(lastBNoHex)
-	lastCreationTimeRaw := util.HexStringtoInt64(blockResponseClient.Timestamp)
-	lastCreationTime := lastCreationTimeRaw / 1000000000
+	lastCreationTime := util.HexStringtoInt64(blockResponseClient.Timestamp)
 	lastCreationTimeSec := lastCreationTime - (lastCreationTime % 60)
 	if lastCreationTimeSec > stopTime {
 		for currentTime > stopTime {
@@ -1409,7 +1401,6 @@ func (nsi *NodeServiceImpl) GetChartData(url string) []ChartInfo {
 				bNoHex := fmt.Sprint("0x", blockNoHex)
 				blockResponseClient := ethClient.GetBlockByNumber(bNoHex)
 				creationTimeRaw := util.HexStringtoInt64(blockResponseClient.Timestamp)
-				creationTimeRaw = creationTimeRaw / 1000000000
 				currentTime = creationTimeRaw - (creationTimeRaw % 60)
 				if currentTime > bucketTime {
 					currentBlockNumber = currentBlockNumber - 1
@@ -1480,7 +1471,7 @@ func (nsi *NodeServiceImpl) getContracts(url string) {
 					}
 				}
 				contSenderMap[txGetClient.ContractAddress] = clientTransactions.From
-				contTimeMap[txGetClient.ContractAddress] = strconv.Itoa(int(util.HexStringtoInt64(blockResponseClient.Timestamp) / 1000000000))
+				contTimeMap[txGetClient.ContractAddress] = strconv.Itoa(util.HexStringtoInt64(blockResponseClient.Timestamp))
 			}
 		}
 	}

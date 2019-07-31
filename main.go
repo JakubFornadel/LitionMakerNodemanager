@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"errors"
 	"flag"
 	"fmt"
 	"math/big"
@@ -11,12 +13,14 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 	"gitlab.com/lition/lition-maker-nodemanager/client"
 	"gitlab.com/lition/lition-maker-nodemanager/contractclient"
-	litionContractClient "gitlab.com/lition/lition-maker-nodemanager/lition_contractclient"
 	"gitlab.com/lition/lition-maker-nodemanager/service"
+	litionContractClient "gitlab.com/lition/lition_contracts/contracts/client"
 )
 
 func init() {
@@ -30,33 +34,20 @@ func main() {
 	listenPort := flag.Int("listenPort", 8000, "descrciption...")
 	infuraURL := flag.String("infuraURL", "wss://ropsten.infura.io/ws", "descrciption...")
 	contractAddress := flag.String("contractAddress", "0xF4f9c1c8D66C8c9c09456BaD6a9890C3caa768c3", "descrciption...")
-	privateKey := flag.String("privateKey", "", "descrciption...")
+	privateKeyStr := flag.String("privateKey", "", "descrciption...")
 	chainID := flag.Int("chainID", 0, "descrciption...")
 	miningFlag := flag.Bool("miningFlag", false, "descrciption...")
 	flag.Parse()
 
-	// TODO: rework pk processing
-	if *miningFlag == true && *privateKey == "" {
-		log.Fatal("NodeManager misconfiguration. When miningFlag == true, also private key must be provided.")
-	}
-
 	listenPortStr := ":" + strconv.Itoa(*listenPort)
-
-	// Init Lition Smartcontract client
-	litionContractClient, err := litionContractClient.NewContractClient(*infuraURL, *contractAddress, *privateKey, big.NewInt(int64(*chainID)))
+	// Init Lition contract client
+	contractClient, auth, pubKey, err := InitLitionContractClient(*infuraURL, *contractAddress, *chainID, *privateKeyStr, *miningFlag)
 	if err != nil {
-		log.Fatal("Unable to init Lition smart contract client")
-	}
-	// Init Lition Smartcontract event listeners
-	if *miningFlag == true {
-		err := litionContractClient.InitListeners()
-		if err != nil {
-			log.Fatal("Unable to init Lition smart contract event listeners")
-		}
+		log.Fatal("Lition contract client initialization failed. Err: ", err)
 	}
 
 	router := mux.NewRouter()
-	nodeService := service.NodeServiceImpl{*nodeUrl, litionContractClient}
+	nodeService := service.NodeServiceImpl{*nodeUrl, contractClient}
 
 	ticker := time.NewTicker(86400 * time.Second)
 	go func() {
@@ -77,14 +68,14 @@ func main() {
 
 		// Let lition SC know that this node wants to start mining
 		if *miningFlag == true {
-			err := litionContractClient.StartMining()
-			if err != nil {
-				log.Fatal("Unable to start mining. Errr: ", err)
-			}
-
 			// Start standalone event listeners
-			go litionContractClient.Start_StartMiningEventListener(nodeService.VoteValidator)
-			go litionContractClient.Start_StopMiningEventListener(nodeService.UnvoteValidator)
+			go contractClient.Start_StartMiningEventListener(nodeService.VoteValidator)
+			go contractClient.Start_StopMiningEventListener(nodeService.UnvoteValidator)
+
+			err := contractClient.StartMining(auth)
+			if err != nil {
+				log.Fatal("Unable to start mining. Err: ", err)
+			}
 		}
 	}()
 
@@ -163,13 +154,13 @@ func main() {
 
 	if *miningFlag == true {
 		// Stop mining
-		litionContractClient.StopMining()
+		contractClient.StopMining(auth)
 		// Unvote itself
-		nodeService.UnvoteValidator(litionContractClient.GetPubKeyStr())
+		nodeService.UnvoteValidatorInternal(pubKey)
 	}
 
 	// Deinit lition smart contract cliet
-	litionContractClient.DeInit()
+	contractClient.DeInit()
 
 	// Create a deadline to wait for.
 	ctx, cancel := context.WithTimeout(context.Background(), 15)
@@ -202,4 +193,51 @@ func (mf *MyFileServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	mf.handler.ServeHTTP(w, r)
+}
+
+func InitLitionContractClient(
+	infuraURL string,
+	contractAddress string,
+	chainID int,
+	privateKeyStr string,
+	miningFlag bool) (client *litionContractClient.ContractClient, auth *bind.TransactOpts, pubKey string, err error) {
+
+	log.Info("Initialize Lition Contract Client")
+	err = nil
+
+	if miningFlag == true && privateKeyStr == "" {
+		err = errors.New("NodeManager misconfiguration. When miningFlag == true, also private key must be provided")
+		return
+	}
+
+	// Init Lition Smartcontract client
+	client, err = litionContractClient.NewClient(infuraURL, contractAddress, big.NewInt(int64(chainID)))
+	if err != nil {
+		return
+	}
+
+	// Init Lition Smartcontract event listeners and auth
+	if miningFlag == true {
+		err = client.InitStartMiningEventListener()
+		if err != nil {
+			log.Error("Unable to init 'StartMining' event listeners")
+			return
+		}
+		err = client.InitStoptMiningEventListener()
+		if err != nil {
+			log.Error("Unable to init 'StopMining' event listeners")
+			return
+		}
+
+		var privateKey *ecdsa.PrivateKey
+		privateKey, err = crypto.HexToECDSA(privateKeyStr)
+		if err != nil {
+			log.Error("Unable to process provided private key")
+			return
+		}
+		pubKey = crypto.PubkeyToAddress(privateKey.PublicKey).String()
+		auth = bind.NewKeyedTransactor(privateKey)
+	}
+
+	return
 }

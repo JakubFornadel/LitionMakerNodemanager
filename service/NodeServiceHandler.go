@@ -61,18 +61,6 @@ func (nsi *NodeServiceImpl) ProposeValidator(w http.ResponseWriter, r *http.Requ
 	json.NewEncoder(w).Encode(response)
 }
 
-// This wrapper is used in event listener for automatic voting
-func (nsi *NodeServiceImpl) VoteValidator(validatorAddress string) {
-	log.Info("Aut. VoteValidator function invoked. Validator: ", validatorAddress)
-	nsi.proposeValidator(nsi.Url, validatorAddress, true)
-}
-
-// This wrapper is used in event listener for automatic unvoting
-func (nsi *NodeServiceImpl) UnvoteValidator(validatorAddress string) {
-	log.Info("Aut. UnvoteValidator function invoked. Validator: ", validatorAddress)
-	nsi.proposeValidator(nsi.Url, validatorAddress, false)
-}
-
 func (nsi *NodeServiceImpl) GetNmcAddress(w http.ResponseWriter, r *http.Request) {
 	var request JoinNetworkRequest
 	_ = json.NewDecoder(r.Body).Decode(&request)
@@ -80,17 +68,17 @@ func (nsi *NodeServiceImpl) GetNmcAddress(w http.ResponseWriter, r *http.Request
 
 	var err error
 	var hasVested, hasDeposited bool
-	hasVested, err = nsi.LitionContractClient.AccHasVested(accAddress)
+	hasDeposited, err = nsi.LitionContractClient.AccHasDeposited(accAddress)
 	if err != nil {
-		log.Error("GetNmcAddress AccHasVested err: ", err)
+		log.Error("GetNmcAddress AccHasDeposited err: ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Internal error"))
 	}
 
-	if hasVested == false {
-		hasDeposited, err = nsi.LitionContractClient.AccHasDeposited(accAddress)
+	if hasDeposited == false {
+		hasVested, err = nsi.LitionContractClient.AccHasVested(accAddress)
 		if err != nil {
-			log.Error("GetNmcAddress AccHasDeposited err: ", err)
+			log.Error("GetNmcAddress AccHasVested err: ", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("Internal error"))
 		}
@@ -117,15 +105,25 @@ func (nsi *NodeServiceImpl) GetGenesisHandler(w http.ResponseWriter, r *http.Req
 
 	log.Info(fmt.Sprint("Join request received from node: ", nodename, " with IP: ", foreignIP, ", enode: ", enode, ", accPubKey: ", accPubKey, " and chainID: ", chainID))
 
-	hasVested, err := nsi.LitionContractClient.AccHasVested(accPubKey)
+	var err error
+	var hasVested, hasDeposited bool
+	hasDeposited, err = nsi.LitionContractClient.AccHasDeposited(accPubKey)
 	if err != nil {
-		log.Error("GetGenesis AccHasVested call error: ", err)
+		log.Error("GetNmcAddress AccHasDeposited err: ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Internal error"))
-		return
 	}
 
-	if hasVested == true {
+	if hasDeposited == false {
+		hasVested, err = nsi.LitionContractClient.AccHasVested(accPubKey)
+		if err != nil {
+			log.Error("GetNmcAddress AccHasVested err: ", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("Internal error"))
+		}
+	}
+
+	if hasVested || hasDeposited {
 		response := nsi.getGenesis(nsi.Url)
 		json.NewEncoder(w).Encode(response)
 		return

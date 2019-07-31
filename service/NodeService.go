@@ -18,8 +18,8 @@ import (
 	"gitlab.com/lition/lition-maker-nodemanager/client"
 	"gitlab.com/lition/lition-maker-nodemanager/contractclient"
 	"gitlab.com/lition/lition-maker-nodemanager/contracthandler"
-	litionContractClient "gitlab.com/lition/lition-maker-nodemanager/lition_contractclient"
 	"gitlab.com/lition/lition-maker-nodemanager/util"
+	litionContractClient "gitlab.com/lition/lition_contracts/contracts/client"
 	"gopkg.in/gomail.v2"
 )
 
@@ -1785,4 +1785,23 @@ func (nsi *NodeServiceImpl) getNodeIPs(url string) []connectedIP {
 		ipList = append(ipList, connected)
 	}
 	return ipList
+}
+
+// This wrapper is used in event listener for automatic voting
+func (nsi *NodeServiceImpl) VoteValidator(event *litionContractClient.LitionStartMining) {
+	validatorAddress := event.Miner.String()
+	log.Info("Aut. VoteValidator function invoked. Validator: ", validatorAddress)
+	nsi.proposeValidator(nsi.Url, validatorAddress, true)
+}
+
+// This wrapper is used in event listener for automatic unvoting
+func (nsi *NodeServiceImpl) UnvoteValidator(event *litionContractClient.LitionStopMining) {
+	validatorAddress := event.Miner.String()
+	log.Info("Aut. UnvoteValidator function invoked. Validator: ", validatorAddress)
+	nsi.proposeValidator(nsi.Url, validatorAddress, false)
+}
+
+func (nsi *NodeServiceImpl) UnvoteValidatorInternal(validatorAddress string) {
+	log.Info("Aut. UnvoteValidator function invoked. Validator: ", validatorAddress)
+	nsi.proposeValidator(nsi.Url, validatorAddress, false)
 }

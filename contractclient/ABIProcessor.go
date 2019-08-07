@@ -3,8 +3,8 @@ package contractclient
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/crypto"
+	"gitlab.com/lition/lition/accounts/abi"
+	"gitlab.com/lition/lition/crypto"
 	"gitlab.com/lition/lition-maker-nodemanager/contracthandler"
 	"strings"
 )

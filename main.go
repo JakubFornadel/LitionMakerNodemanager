@@ -13,13 +13,13 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 	"gitlab.com/lition/lition-maker-nodemanager/client"
 	"gitlab.com/lition/lition-maker-nodemanager/contractclient"
 	"gitlab.com/lition/lition-maker-nodemanager/service"
+	"gitlab.com/lition/lition/accounts/abi/bind"
+	"gitlab.com/lition/lition/crypto"
 	litionContractClient "gitlab.com/lition/lition_contracts/contracts/client"
 )
 

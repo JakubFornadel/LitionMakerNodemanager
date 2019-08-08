@@ -56,6 +56,7 @@ type NodeInfo struct {
 	BlockNumber    int64            `json:"blockNumber"`
 	PendingTxCount int              `json:"pendingTxCount"`
 	AdminInfo      client.AdminInfo `json:"adminInfo"`
+	ChainId        int              `json:"ChainId"`
 }
 
 type JoinNetworkRequest struct {
@@ -405,12 +406,14 @@ func (nsi *NodeServiceImpl) getCurrentNode(url string) NodeInfo {
 	blockNumber := ethClient.BlockNumber()
 	blockNumberInt := util.HexStringtoInt64(blockNumber)
 
-	role := util.PropertyExists("ROLE", "/home/setup.conf")
-
-	role = strings.TrimSuffix(role, "\n")
+	role := util.MustGetString("ROLE", p)
+	chainId, err := strconv.Atoi(util.MustGetString("CHAIN_ID", p))
+	if err != nil {
+		log.Println(err)
+	}
 
 	conn := ConnectionInfo{ipAddr, rpcPortInt, enode}
-	responseObj := NodeInfo{nodeName, count, totalCount, activeStatus, conn, role, blockNumberInt, pendingTxCount, thisAdminInfo}
+	responseObj := NodeInfo{nodeName, count, totalCount, activeStatus, conn, role, blockNumberInt, pendingTxCount, thisAdminInfo, chainId}
 	return responseObj
 }
 

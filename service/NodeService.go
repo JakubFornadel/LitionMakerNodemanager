@@ -56,7 +56,7 @@ type NodeInfo struct {
 	BlockNumber    int64            `json:"blockNumber"`
 	PendingTxCount int              `json:"pendingTxCount"`
 	AdminInfo      client.AdminInfo `json:"adminInfo"`
-	ChainId        int              `json:"ChainId"`
+	ChainId        int              `json:"chainId"`
 }
 
 type JoinNetworkRequest struct {

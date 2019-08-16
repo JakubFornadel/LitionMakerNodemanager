@@ -89,8 +89,6 @@ func main() {
 	router.HandleFunc("/peer", nodeService.GetCurrentNodeHandler).Methods("GET")
 	router.HandleFunc("/nmcAddress", nodeService.GetNmcAddress).Methods("POST")
 	router.HandleFunc("/txnrcpt/{txn_hash}", nodeService.GetTransactionReceiptHandler).Methods("GET")
-	router.HandleFunc("/joinNetwork", nodeService.JoinNetworkScriptCallHandler).Methods("POST")
-	router.HandleFunc("/joinNetwork", nodeService.OptionsHandler).Methods("OPTIONS")
 	router.HandleFunc("/deployContract", nodeService.DeployContractHandler).Methods("POST")
 	router.HandleFunc("/latestBlock", nodeService.LatestBlockHandler).Methods("GET")
 	router.HandleFunc("/latency", nodeService.LatencyHandler).Methods("GET")

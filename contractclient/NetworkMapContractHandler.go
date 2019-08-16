@@ -59,34 +59,6 @@ func (nms *NetworkMapContractClient) UpdateNodeRequestsHandler(w http.ResponseWr
 	json.NewEncoder(w).Encode(response)
 }
 
-func (nms *NetworkMapContractClient) RegisterNodeRequestHandler(w http.ResponseWriter, r *http.Request) {
-	coinbase := nms.EthClient.Coinbase()
-	var request NodeDetails
-	_ = json.NewDecoder(r.Body).Decode(&request)
-
-	enode := request.Enode
-	role := util.PropertyExists("ROLE", "/home/setup.conf")
-	nodeName := request.Name
-	publickey := request.PublicKey
-	ip := request.IP
-	var contractAdd string
-	exists := util.PropertyExists("CONTRACT_ADD", "/home/setup.conf")
-	if exists != "" {
-		p := properties.MustLoadFile("/home/setup.conf", properties.UTF8)
-		contractAdd = util.MustGetString("CONTRACT_ADD", p)
-	}
-
-	cp := contracthandler.ContractParam{coinbase, contractAdd, "", nil}
-	nms.SetContractParam(cp)
-
-	response := nms.RegisterNode(nodeName, role, publickey, enode, ip)
-
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "OPTIONS, GET, POST")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Depth, User-Agent, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-Control")
-	json.NewEncoder(w).Encode(response)
-}
-
 func (nms *NetworkMapContractClient) GetNodeDetailsResponseHandler(w http.ResponseWriter, r *http.Request) {
 	coinbase := nms.EthClient.Coinbase()
 	params := mux.Vars(r)
@@ -208,40 +180,6 @@ func (nms *NetworkMapContractClient) ActiveNodesHandler(w http.ResponseWriter, r
 func (nms *NetworkMapContractClient) OptionsHandler(w http.ResponseWriter, r *http.Request) {
 	response := "Options Handled"
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "OPTIONS, GET, POST")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Depth, User-Agent, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-Control")
-	json.NewEncoder(w).Encode(response)
-}
-
-func (nms *NetworkMapContractClient) UpdateNodeHandler(w http.ResponseWriter, r *http.Request) {
-	var request UpdateNode
-	_ = json.NewDecoder(r.Body).Decode(&request)
-	nodeName := request.NodeName
-	role := util.PropertyExists("ROLE", "/home/setup.conf")
-	coinbase := nms.EthClient.Coinbase()
-	enode := nms.EthClient.AdminNodeInfo().ID
-	//var contractAdd, publickey, ip, id, oldName string
-	var contractAdd, publickey, ip string
-	existsA := util.PropertyExists("CONTRACT_ADD", "/home/setup.conf")
-	existsB := util.PropertyExists("PUBKEY", "/home/setup.conf")
-	existsC := util.PropertyExists("CURRENT_IP", "/home/setup.conf")
-	//existsE := util.PropertyExists("NODENAME", "/home/setup.conf")
-	//if existsA != "" && existsB != "" && existsC != "" && existsD != "" && existsE != "" {
-	if existsA != "" && existsB != "" && existsC != "" {
-		p := properties.MustLoadFile("/home/setup.conf", properties.UTF8)
-		contractAdd = util.MustGetString("CONTRACT_ADD", p)
-		publickey = util.MustGetString("PUBKEY", p)
-		ip = util.MustGetString("CURRENT_IP", p)
-		//oldName = util.MustGetString("NODENAME", p)
-	}
-	cp := contracthandler.ContractParam{coinbase, contractAdd, "", nil}
-	nms.SetContractParam(cp)
-	response := nms.UpdateNode(nodeName, role, publickey, enode, ip)
-	//registered := fmt.Sprint("NODENAME=", nodeName, "\n")
-	//util.AppendStringToFile("/home/setup.conf", registered)
-	//oldProperty := fmt.Sprint("NODENAME=", oldName)
-	//util.DeleteProperty(oldProperty, "/home/setup.conf")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "OPTIONS, GET, POST")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Depth, User-Agent, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-Control")

@@ -20,7 +20,6 @@ import (
 	"gitlab.com/lition/lition-maker-nodemanager/contracthandler"
 	"gitlab.com/lition/lition-maker-nodemanager/util"
 	litionContractClient "gitlab.com/lition/lition_contracts/contracts/client"
-	"gopkg.in/gomail.v2"
 )
 
 type ConnectionInfo struct {
@@ -591,14 +590,6 @@ func (nsi *NodeServiceImpl) getTransactionInfo(txno string, url string) Transact
 	return txResponse
 }
 
-func (nsi *NodeServiceImpl) deleteTransactionPayload(txno string, url string) bool {
-	var nodeUrl = url
-	ethClient := client.EthClient{nodeUrl}
-	txResponseClient := ethClient.GetTransactionByHash(txno)
-
-	return ethClient.DeleteQuorumPayload(txResponseClient.Input)
-}
-
 func (nsi *NodeServiceImpl) getTransactionReceipt(txno string, url string) TransactionReceiptResponse {
 	//if txnMap[txno].TransactionHash == "" {
 	log.Println("getTransactionReceipt: called with params txno: " + txno + "; url: " + url)
@@ -949,94 +940,6 @@ func (nsi *NodeServiceImpl) deployContract(pubKeys []string, fileName []string, 
 	return contractJsonArr
 }
 
-func (nsi *NodeServiceImpl) createNetworkScriptCall(nodename string, currentIP string, rpcPort string, whisperPort string, constellationPort string, nodeManagerPort string) SuccessResponse {
-	var successResponse SuccessResponse
-	cmd := exec.Command("./setup.sh", "1", nodename)
-	cmd.Dir = "./Setup"
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	err := cmd.Run()
-	if err != nil {
-		log.Println(err)
-	}
-
-	var setupConf string
-	setupConf = "CURRENT_IP=" + currentIP + "\n" + "RPC_PORT=" + rpcPort + "\n" + "WHISPER_PORT=" + whisperPort + "\n" + "CONSTELLATION_PORT=" + constellationPort + "\n" + "NODEMANAGER_PORT=" + nodeManagerPort + "\n"
-	setupConfByte := []byte(setupConf)
-	err = ioutil.WriteFile("./Setup/"+nodename+"/setup.conf", setupConfByte, 0775)
-	if err != nil {
-		fmt.Println(err)
-	}
-	successResponse.Status = "success"
-	return successResponse
-}
-
-func (nsi *NodeServiceImpl) joinRequestResponseCall(nodename string, currentIP string, rpcPort string, whisperPort string, constellationPort string, nodeManagerPort string, masterNodeManagerPort string, masterIP string) SuccessResponse {
-	var successResponse SuccessResponse
-	cmd := exec.Command("./setup.sh", "2", nodename, masterIP, masterNodeManagerPort, currentIP, rpcPort, whisperPort, constellationPort, nodeManagerPort)
-	cmd.Dir = "./Setup"
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	err := cmd.Run()
-	if err != nil {
-		log.Println(err)
-	}
-
-	var setupConf string
-	setupConf = "CURRENT_IP=" + currentIP + "\n" + "RPC_PORT=" + rpcPort + "\n" + "WHISPER_PORT=" + whisperPort + "\n" + "CONSTELLATION_PORT=" + constellationPort + "\n" + "THIS_NODEMANAGER_PORT=" + nodeManagerPort + "\n" + "MASTER_IP=" + masterIP + "\n" + "NODEMANAGER_PORT=" + masterNodeManagerPort + "\n"
-	setupConfByte := []byte(setupConf)
-	err = ioutil.WriteFile("./Setup/"+nodename+"/setup.conf", setupConfByte, 0775)
-	if err != nil {
-		fmt.Println(err)
-	}
-	successResponse.Status = "success"
-	return successResponse
-}
-
-func (nsi *NodeServiceImpl) resetCurrentNode() SuccessResponse {
-	var successResponse SuccessResponse
-	cmd := exec.Command("./reset_chain.sh")
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	err := cmd.Run()
-	if err != nil {
-		log.Println(err)
-		successResponse.Status = "failure"
-		return successResponse
-	}
-	successResponse.Status = "success"
-	return successResponse
-}
-
-func (nsi *NodeServiceImpl) restartCurrentNode() SuccessResponse {
-	var successResponse SuccessResponse
-	r, _ := regexp.Compile("[s][t][a][r][t][_][A-Za-z0-9]*[.][s][h]")
-	files, err := ioutil.ReadDir("/home/node")
-	if err != nil {
-		log.Println(err)
-	}
-	var filename string
-	for _, f := range files {
-		match, _ := regexp.MatchString("[s][t][a][r][t][_][A-Za-z0-9]*[.][s][h]", f.Name())
-		if match {
-			filename = r.FindString(f.Name())
-		}
-	}
-	filepath := fmt.Sprint("./", filename)
-	cmd := exec.Command(filepath)
-	cmd.Dir = "/home/node"
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	err = cmd.Start()
-	if err != nil {
-		log.Println(err)
-		successResponse.Status = "failure"
-		return successResponse
-	}
-	successResponse.Status = "success"
-	return successResponse
-}
-
 func (nsi *NodeServiceImpl) latestBlockDetails(url string) LatestBlockResponse {
 	var latestBlockResponse LatestBlockResponse
 	var nodeUrl = url
@@ -1131,105 +1034,6 @@ func (nsi *NodeServiceImpl) transactionSearchDetails(txno string, url string) Bl
 	blockNumber := util.HexStringtoInt64(txGetClient.BlockNumber)
 	blockDetailsResponse := nsi.getBlockInfo(blockNumber, url)
 	return blockDetailsResponse
-}
-
-func (nsi *NodeServiceImpl) emailServerConfig(host string, port string, username string, password string, recipientList string, url string) SuccessResponse {
-	var successResponse SuccessResponse
-
-	mailServerConfig.Host = host
-	mailServerConfig.Port = port
-	mailServerConfig.Username = username
-	mailServerConfig.Password = password
-	mailServerConfig.RecipientList = recipientList
-
-	registered := fmt.Sprint("RECIPIENTLIST=", recipientList, "\n")
-	util.AppendStringToFile("/home/setup.conf", registered)
-
-	ticker := time.NewTicker(30 * time.Second)
-	go func() {
-		for range ticker.C {
-			//fmt.Println("Healthcheck done at: ", t)
-			if warning > 0 {
-				//fmt.Println("Ticker stopped")
-				ticker.Stop()
-			}
-			nsi.healthCheck(url)
-
-		}
-	}()
-	go func() {
-		nsi.sendTestMail()
-	}()
-	successResponse.Status = "success"
-	return successResponse
-}
-
-func (nsi *NodeServiceImpl) healthCheck(url string) {
-	ethClient := client.EthClient{url}
-	blockNumber := ethClient.BlockNumber()
-	if blockNumber == "" {
-		if warning > 0 {
-			exists := util.PropertyExists("RECIPIENTLIST", "/home/setup.conf")
-			if exists != "" {
-				p := properties.MustLoadFile("/home/setup.conf", properties.UTF8)
-				recipientList := util.MustGetString("RECIPIENTLIST", p)
-				recipients := strings.Split(recipientList, ",")
-
-				b, err := ioutil.ReadFile("/root/lition-maker/NodeUnavailableTemplate.txt")
-
-				if err != nil {
-					log.Println(err)
-				}
-
-				mailCont := string(b)
-				mailCont = strings.Replace(mailCont, "\n", "", -1)
-				for i := 0; i < len(recipients); i++ {
-					nsi.sendMail(mailServerConfig.Host, mailServerConfig.Port, mailServerConfig.Username, mailServerConfig.Password, "Node is not responding", mailCont, recipients[i])
-				}
-			}
-		}
-		warning++
-	}
-}
-
-func (nsi *NodeServiceImpl) sendTestMail() {
-	existsA := util.PropertyExists("RECIPIENTLIST", "/home/setup.conf")
-	existsB := util.PropertyExists("NODENAME", "/home/setup.conf")
-
-	if existsA != "" && existsB != "" {
-		p := properties.MustLoadFile("/home/setup.conf", properties.UTF8)
-		nodename := util.MustGetString("NODENAME", p)
-		recipientList := util.MustGetString("RECIPIENTLIST", p)
-		recipients := strings.Split(recipientList, ",")
-		b, err := ioutil.ReadFile("/root/lition-maker/TestMailTemplate.txt")
-		if err != nil {
-			log.Println(err)
-		}
-
-		mailCont := string(b)
-		message := fmt.Sprintf(mailCont, nodename)
-		for i := 0; i < len(recipients); i++ {
-			nsi.sendMail(mailServerConfig.Host, mailServerConfig.Port, mailServerConfig.Username, mailServerConfig.Password, "Quorum Maker Notification Service configured", message, recipients[i])
-		}
-	}
-}
-
-func (nsi *NodeServiceImpl) sendMail(host string, port string, username string, password string, subject string, mailContent string, to string) {
-	portNo, err := strconv.ParseInt(port, 10, 64)
-	if err != nil {
-		fmt.Println(err)
-	}
-	m := gomail.NewMessage()
-	m.SetHeader("From", username)
-	m.SetHeader("To", to)
-	m.SetHeader("Subject", subject)
-	m.SetBody("text", mailContent)
-
-	d := gomail.NewDialer(host, int(portNo), username, password)
-
-	if err := d.DialAndSend(m); err != nil {
-		log.Println(err)
-	}
 }
 
 //@TODO: Implement logrotate command to do this.

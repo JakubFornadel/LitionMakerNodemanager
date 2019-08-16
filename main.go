@@ -103,7 +103,6 @@ func main() {
 	router.HandleFunc("/contractList", nodeService.GetContractListHandler).Methods("GET")
 	router.HandleFunc("/contractCount", nodeService.GetContractCountHandler).Methods("GET")
 	router.HandleFunc("/updateContractDetails", nodeService.ContractDetailsUpdateHandler).Methods("POST")
-	router.HandleFunc("/initialized", nodeService.InitializationHandler).Methods("GET")
 	router.HandleFunc("/createAccount", nodeService.CreateAccountHandler).Methods("POST")
 	router.HandleFunc("/createAccount", nodeService.OptionsHandler).Methods("OPTIONS")
 	router.HandleFunc("/getAccounts", nodeService.GetAccountsHandler).Methods("GET")

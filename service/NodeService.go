@@ -1081,10 +1081,6 @@ func (nsi *NodeServiceImpl) LogRotaterConst() {
 }
 
 func (nsi *NodeServiceImpl) RegisterNodeDetails(url string) {
-	mode := currentMode()
-	if mode == "PASSIVE" || mode == "ACTIVENI" {
-		return
-	}
 	var nodeUrl = url
 	var registeredVal string
 	exists := util.PropertyExists("REGISTERED", "/home/setup.conf")
@@ -1120,10 +1116,6 @@ func (nsi *NodeServiceImpl) RegisterNodeDetails(url string) {
 }
 
 func (nsi *NodeServiceImpl) NetworkManagerContractDeployer(url string) {
-	mode := currentMode()
-	if mode == "PASSIVE" || mode == "ACTIVENI" {
-		return
-	}
 	var contractAdd string
 	exists := util.PropertyExists("CONTRACT_ADD", "/home/setup.conf")
 	if exists != "" {
@@ -1270,50 +1262,14 @@ func (nsi *NodeServiceImpl) getContracts(url string) {
 					} else {
 						contTypeMap[txGetClient.ContractAddress] = "Private"
 					}
-				} else {
-					contTypeMap[txGetClient.ContractAddress] = "Public"
-					mode := currentMode()
-					if mode == "ACTIVENI" {
-						nsi.attachModeRegisterDetails(url, txGetClient.ContractAddress)
-					}
 				}
 				contSenderMap[txGetClient.ContractAddress] = clientTransactions.From
 				contTimeMap[txGetClient.ContractAddress] = strconv.Itoa(int(util.HexStringtoInt64(blockResponseClient.Timestamp)))
 			}
 		}
 	}
-	mode := currentMode()
-	if mode == "ACTIVENI" {
-		util.DeleteProperty("MODE=ACTIVENI", "/home/setup.conf")
-		modeActive := fmt.Sprint("MODE=ACTIVE\n")
-		util.AppendStringToFile("/home/setup.conf", modeActive)
-		nsi.NetworkManagerContractDeployer(url)
-		nsi.RegisterNodeDetails(url)
-	}
 	lastCrawledBlock = blockNumber
 	contractCrawlerMutex = 0
-}
-
-func (nsi *NodeServiceImpl) attachModeRegisterDetails(url string, contractAdd string) {
-	nmcBytecode, err := ioutil.ReadFile("/root/lition-maker/nmcBytecode")
-	if err != nil {
-		log.Println(err)
-	}
-	nmcBytecodeString := string(nmcBytecode)
-	nmcBytecodeString = strings.Replace(nmcBytecodeString, "\n", "", -1)
-	ethClient := client.EthClient{url}
-	bytecode := ethClient.GetCode(contractAdd)
-	hashIndex := len(bytecode) - 68
-	bytecode = bytecode[:hashIndex]
-	if bytecode == nmcBytecodeString {
-		util.DeleteProperty("MODE=ACTIVENI", "/home/setup.conf")
-		modeActive := fmt.Sprint("MODE=ACTIVE\n")
-		util.AppendStringToFile("/home/setup.conf", modeActive)
-		contAddAppend := fmt.Sprint("CONTRACT_ADD=", contractAdd, "\n")
-		util.AppendStringToFile("/home/setup.conf", contAddAppend)
-		util.DeleteProperty("CONTRACT_ADD=", "/home/setup.conf")
-		nsi.RegisterNodeDetails(url)
-	}
 }
 
 func (nsi *NodeServiceImpl) ContractList() []ContractTableRow {
@@ -1358,35 +1314,6 @@ func (nsi *NodeServiceImpl) updateContractDetails(contractAddress string, contra
 	contDescriptionMap[contractAddress] = description
 	successResponse.Status = "Successfully updated contract details"
 	return successResponse
-}
-
-func (nsi *NodeServiceImpl) returnCurrentInitializationState() SuccessResponseBool {
-	var successResponse SuccessResponseBool
-	state := currentState()
-	if state == "I" {
-		successResponse.Status = true
-	}
-	return successResponse
-}
-
-func currentMode() string {
-	var mode string
-	exists := util.PropertyExists("MODE", "/home/setup.conf")
-	if exists != "" {
-		p := properties.MustLoadFile("/home/setup.conf", properties.UTF8)
-		mode = util.MustGetString("MODE", p)
-	}
-	return mode
-}
-
-func currentState() string {
-	var state string
-	exists := util.PropertyExists("STATE", "/home/setup.conf")
-	if exists != "" {
-		p := properties.MustLoadFile("/home/setup.conf", properties.UTF8)
-		state = util.MustGetString("STATE", p)
-	}
-	return state
 }
 
 func (nsi *NodeServiceImpl) ABICrawler(url string) {

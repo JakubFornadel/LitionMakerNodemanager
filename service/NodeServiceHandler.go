@@ -376,12 +376,6 @@ func (nsi *NodeServiceImpl) ContractDetailsUpdateHandler(w http.ResponseWriter, 
 	json.NewEncoder(w).Encode(response)
 }
 
-func (nsi *NodeServiceImpl) InitializationHandler(w http.ResponseWriter, r *http.Request) {
-	response := nsi.returnCurrentInitializationState()
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	json.NewEncoder(w).Encode(response)
-}
-
 func (nsi *NodeServiceImpl) CreateAccountHandler(w http.ResponseWriter, r *http.Request) {
 	var request accountPassword
 	_ = json.NewDecoder(r.Body).Decode(&request)

@@ -199,14 +199,6 @@ func (nsi *NodeServiceImpl) GetTransactionInfoHandler(w http.ResponseWriter, r *
 	}
 }
 
-func (nsi *NodeServiceImpl) DeleteTransactionPayloadHandler(w http.ResponseWriter, r *http.Request) {
-	params := mux.Vars(r)
-	response := nsi.deleteTransactionPayload(params["txn_hash"], nsi.Url)
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	json.NewEncoder(w).Encode(response)
-
-}
-
 func (nsi *NodeServiceImpl) GetLatestTransactionInfoHandler(w http.ResponseWriter, r *http.Request) {
 	count := r.FormValue("number")
 	response := nsi.getLatestTransactionInfo(count, nsi.Url)
@@ -272,40 +264,6 @@ func (nsi *NodeServiceImpl) DeployContractHandler(w http.ResponseWriter, r *http
 	json.NewEncoder(w).Encode(response)
 }
 
-func (nsi *NodeServiceImpl) CreateNetworkScriptCallHandler(w http.ResponseWriter, r *http.Request) {
-	var request CreateNetworkScriptArgs
-	_ = json.NewDecoder(r.Body).Decode(&request)
-	fmt.Println(request)
-	response := nsi.createNetworkScriptCall(request.Nodename, request.CurrentIP, request.RPCPort, request.WhisperPort, request.ConstellationPort, request.NodeManagerPort)
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "OPTIONS, GET, POST")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Depth, User-Agent, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-Control")
-	json.NewEncoder(w).Encode(response)
-}
-
-func (nsi *NodeServiceImpl) JoinNetworkScriptCallHandler(w http.ResponseWriter, r *http.Request) {
-	var request JoinNetworkScriptArgs
-	_ = json.NewDecoder(r.Body).Decode(&request)
-	fmt.Println(request)
-	response := nsi.joinRequestResponseCall(request.Nodename, request.CurrentIP, request.RPCPort, request.WhisperPort, request.ConstellationPort, request.NodeManagerPort, request.MasterNodeManagerPort, request.MasterIP)
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "OPTIONS, GET, POST")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Depth, User-Agent, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-Control")
-	json.NewEncoder(w).Encode(response)
-}
-
-func (nsi *NodeServiceImpl) ResetHandler(w http.ResponseWriter, r *http.Request) {
-	response := nsi.resetCurrentNode()
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	json.NewEncoder(w).Encode(response)
-}
-
-func (nsi *NodeServiceImpl) RestartHandler(w http.ResponseWriter, r *http.Request) {
-	response := nsi.restartCurrentNode()
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	json.NewEncoder(w).Encode(response)
-}
-
 func (nsi *NodeServiceImpl) LatestBlockHandler(w http.ResponseWriter, r *http.Request) {
 	response := nsi.latestBlockDetails(nsi.Url)
 	w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -318,27 +276,10 @@ func (nsi *NodeServiceImpl) LatencyHandler(w http.ResponseWriter, r *http.Reques
 	json.NewEncoder(w).Encode(response)
 }
 
-//func (nsi *NodeServiceImpl) LogsHandler(w http.ResponseWriter, r *http.Request) {
-//	response := nsi.logs()
-//	w.Header().Set("Access-Control-Allow-Origin", "*")
-//	json.NewEncoder(w).Encode(response)
-//}
-
 func (nsi *NodeServiceImpl) TransactionSearchHandler(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	response := nsi.transactionSearchDetails(params["txn_hash"], nsi.Url)
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	json.NewEncoder(w).Encode(response)
-}
-
-func (nsi *NodeServiceImpl) MailServerConfigHandler(w http.ResponseWriter, r *http.Request) {
-	var request MailServerConfig
-	_ = json.NewDecoder(r.Body).Decode(&request)
-	response := nsi.emailServerConfig(request.Host, request.Port, request.Username, request.Password, request.RecipientList, nsi.Url)
-	w.Header().Set("Access-Control-Allow-Credentials", "true")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "OPTIONS, GET, POST")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Depth, User-Agent, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-Control")
 	json.NewEncoder(w).Encode(response)
 }
 
@@ -431,53 +372,6 @@ func (nsi *NodeServiceImpl) ContractDetailsUpdateHandler(w http.ResponseWriter, 
 
 	Buf.Reset()
 	response := nsi.updateContractDetails(contractAddress, contractName, data, description)
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	json.NewEncoder(w).Encode(response)
-}
-
-func (nsi *NodeServiceImpl) AttachedNodeDetailsHandler(w http.ResponseWriter, r *http.Request) {
-	var successResponse SuccessResponse
-	var Buf bytes.Buffer
-	gethLogsDirectory := r.FormValue("gethPath")
-	constellationLogsDirectory := r.FormValue("constellationPath")
-
-	file, _, err := r.FormFile("genesis")
-	if err != nil {
-		fmt.Println(err)
-	}
-	defer file.Close()
-	io.Copy(&Buf, file)
-	content := Buf.String()
-
-	filePath := "/home/node/genesis.json"
-	jsByte := []byte(content)
-	err = ioutil.WriteFile(filePath, jsByte, 0775)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	var jsonContent genesisJSON
-	json.Unmarshal([]byte(content), &jsonContent)
-	chainIdAppend := fmt.Sprint("NETWORK_ID=", jsonContent.Config.ChainId, "\n")
-	util.AppendStringToFile("/home/setup.conf", chainIdAppend)
-	util.InsertStringToFile("/home/start.sh", "	   -v "+gethLogsDirectory+":/home/node/qdata/gethLogs \\\n", 13)
-	util.InsertStringToFile("/home/start.sh", "	   -v "+constellationLogsDirectory+":/home/node/qdata/constellationLogs \\\n", 13)
-
-	Buf.Reset()
-	fmt.Println("Updates have been saved. Please press Ctrl+C to exit from this container and run start.sh to apply changes")
-	state := currentState()
-	if state == "NI" {
-		util.DeleteProperty("STATE=NI", "/home/setup.conf")
-		stateInitialized := fmt.Sprint("STATE=I\n")
-		util.AppendStringToFile("/home/setup.conf", stateInitialized)
-	}
-	successResponse.Status = "Updates have been saved. Please press Ctrl+C from CLI to exit from this container and run start.sh to apply changes"
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	json.NewEncoder(w).Encode(successResponse)
-}
-
-func (nsi *NodeServiceImpl) InitializationHandler(w http.ResponseWriter, r *http.Request) {
-	response := nsi.returnCurrentInitializationState()
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	json.NewEncoder(w).Encode(response)
 }

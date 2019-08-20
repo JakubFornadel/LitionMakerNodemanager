@@ -19,7 +19,7 @@ import (
 	"gitlab.com/lition/lition-maker-nodemanager/contractclient"
 	"gitlab.com/lition/lition-maker-nodemanager/contracthandler"
 	"gitlab.com/lition/lition-maker-nodemanager/util"
-	litionContractClient "gitlab.com/lition/lition_contracts/contracts/client"
+	litionScClient "gitlab.com/lition/lition_contracts/contracts/client"
 )
 
 type ConnectionInfo struct {
@@ -230,7 +230,7 @@ type LatencyResponse struct {
 
 type NodeServiceImpl struct {
 	Url                  string
-	LitionContractClient *litionContractClient.ContractClient
+	LitionContractClient *litionScClient.ContractClient
 }
 
 type ChartInfo struct {
@@ -1522,14 +1522,14 @@ func (nsi *NodeServiceImpl) getNodeIPs(url string) []connectedIP {
 }
 
 // This wrapper is used in event listener for automatic voting
-func (nsi *NodeServiceImpl) VoteValidator(event *litionContractClient.LitionStartMining) {
+func (nsi *NodeServiceImpl) VoteValidator(event *litionScClient.LitionScClientStartMining) {
 	validatorAddress := event.Miner.String()
 	log.Info("Aut. VoteValidator function invoked. Validator: ", validatorAddress)
 	nsi.proposeValidator(nsi.Url, validatorAddress, true)
 }
 
 // This wrapper is used in event listener for automatic unvoting
-func (nsi *NodeServiceImpl) UnvoteValidator(event *litionContractClient.LitionStopMining) {
+func (nsi *NodeServiceImpl) UnvoteValidator(event *litionScClient.LitionScClientStopMining) {
 	validatorAddress := event.Miner.String()
 	log.Info("Aut. UnvoteValidator function invoked. Validator: ", validatorAddress)
 	nsi.proposeValidator(nsi.Url, validatorAddress, false)

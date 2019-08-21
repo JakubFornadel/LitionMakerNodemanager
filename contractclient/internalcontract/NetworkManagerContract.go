@@ -1,18 +1,18 @@
 // Code generated - DO NOT EDIT.
 // This file is a generated binding and any manual changes will be lost.
 
-package lition
+package internalcontract
 
 import (
 	"math/big"
 	"strings"
 
 	ethereum "github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/event"
+	"gitlab.com/lition/lition/accounts/abi"
+	"gitlab.com/lition/lition/accounts/abi/bind"
+	"gitlab.com/lition/lition/common"
+	"gitlab.com/lition/lition/core/types"
+	"gitlab.com/lition/lition/event"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.

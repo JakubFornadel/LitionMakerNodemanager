@@ -7,7 +7,7 @@ import (
 	"math/big"
 	"strings"
 
-	ethereum "github.com/ethereum/go-ethereum"
+	ethereum "gitlab.com/lition/lition"
 	"gitlab.com/lition/lition/accounts/abi"
 	"gitlab.com/lition/lition/accounts/abi/bind"
 	"gitlab.com/lition/lition/common"

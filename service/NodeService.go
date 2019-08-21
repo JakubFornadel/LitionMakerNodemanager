@@ -22,7 +22,7 @@ import (
 	"gitlab.com/lition/lition/accounts/abi/bind"
 	"gitlab.com/lition/lition/common"
 	"gitlab.com/lition/lition/ethclient"
-	litionContractClient "gitlab.com/lition/lition_contracts/contracts/client"
+	litionScClient "gitlab.com/lition/lition_contracts/contracts/client"
 )
 
 type ConnectionInfo struct {
@@ -233,7 +233,7 @@ type LatencyResponse struct {
 
 type NodeServiceImpl struct {
 	Url                  string
-	LitionContractClient *litionContractClient.ContractClient
+	LitionContractClient *litionScClient.ContractClient
 	Auth                 *bind.TransactOpts
 	Nms                  *contractclient.NetworkMapContractClient
 }
@@ -344,8 +344,6 @@ func (nsi *NodeServiceImpl) getNmcAddress() (response GetNmcAddressResponse) {
 func (nsi *NodeServiceImpl) getCurrentNode(url string) NodeInfo {
 	var nodeUrl = url
 	ethClient := client.EthClient{nodeUrl}
-	fromAddress := ethClient.Coinbase()
-	var contractAdd string
 	var p *properties.Properties
 
 	nsi.InitInternalContract(url)
@@ -760,7 +758,6 @@ func (nsi *NodeServiceImpl) joinRequestResponse(enode string, status string) Suc
 func (nsi *NodeServiceImpl) deployContract(pubKeys []string, fileName []string, private bool, url string) []ContractJson {
 	var nodeUrl = url
 	ethClient := client.EthClient{nodeUrl}
-	fromAddress := ethClient.Coinbase()
 
 	nsi.InitInternalContract(url)
 
@@ -950,10 +947,6 @@ func (nsi *NodeServiceImpl) latestBlockDetails(url string) LatestBlockResponse {
 }
 
 func (nsi *NodeServiceImpl) latency(url string) []LatencyResponse {
-	var nodeUrl = url
-	ethClient := client.EthClient{nodeUrl}
-	fromAddress := ethClient.Coinbase()
-
 	nsi.InitInternalContract(url)
 
 	peerNo := nsi.Nms.GetNodeCount()
@@ -1043,20 +1036,17 @@ func (nsi *NodeServiceImpl) RegisterNodeDetails(url string) {
 		ethClient := client.EthClient{nodeUrl}
 
 		enode := ethClient.AdminNodeInfo().ID
-		fromAddress := ethClient.Coinbase()
-		var ipAddr, nodename, pubKey, role, contractAdd string
+		var ipAddr, nodename, pubKey, role string
 		existsA := util.PropertyExists("CURRENT_IP", "/home/setup.conf")
 		existsB := util.PropertyExists("NODENAME", "/home/setup.conf")
 		existsC := util.PropertyExists("PUBKEY", "/home/setup.conf")
 		existsD := util.PropertyExists("ROLE", "/home/setup.conf")
-		existsF := util.PropertyExists("CONTRACT_ADD", "/home/setup.conf")
-		if existsA != "" && existsB != "" && existsC != "" && existsD != "" && existsF != "" {
+		if existsA != "" && existsB != "" && existsC != "" && existsD != "" {
 			p := properties.MustLoadFile("/home/setup.conf", properties.UTF8)
 			ipAddr = util.MustGetString("CURRENT_IP", p)
 			nodename = util.MustGetString("NODENAME", p)
 			pubKey = util.MustGetString("PUBKEY", p)
 			role = util.MustGetString("ROLE", p)
-			contractAdd = util.MustGetString("CONTRACT_ADD", p)
 		}
 		registered := fmt.Sprint("REGISTERED=TRUE", "\n")
 		util.AppendStringToFile("/home/setup.conf", registered)
@@ -1447,7 +1437,6 @@ func (nsi *NodeServiceImpl) getNodeIPs(url string) []connectedIP {
 	var ipList []connectedIP
 	var connectedIPs = map[string]int{}
 	ethClient := client.EthClient{nodeUrl}
-	fromAddress := ethClient.Coinbase()
 	enode := ethClient.AdminNodeInfo().ID
 	nsi.InitInternalContract(url)
 	nodeList := nsi.Nms.GetNodeDetailsList()
@@ -1490,14 +1479,14 @@ func (nsi *NodeServiceImpl) InitInternalContract(url string) {
 }
 
 // This wrapper is used in event listener for automatic voting
-func (nsi *NodeServiceImpl) VoteValidator(event *litionContractClient.LitionStartMining) {
+func (nsi *NodeServiceImpl) VoteValidator(event *litionScClient.LitionScClientStartMining) {
 	validatorAddress := event.Miner.String()
 	log.Info("Aut. VoteValidator function invoked. Validator: ", validatorAddress)
 	nsi.proposeValidator(nsi.Url, validatorAddress, true)
 }
 
 // This wrapper is used in event listener for automatic unvoting
-func (nsi *NodeServiceImpl) UnvoteValidator(event *litionContractClient.LitionStopMining) {
+func (nsi *NodeServiceImpl) UnvoteValidator(event *litionScClient.LitionScClientStopMining) {
 	validatorAddress := event.Miner.String()
 	log.Info("Aut. UnvoteValidator function invoked. Validator: ", validatorAddress)
 	nsi.proposeValidator(nsi.Url, validatorAddress, false)

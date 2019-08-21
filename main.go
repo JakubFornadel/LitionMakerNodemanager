@@ -18,7 +18,7 @@ import (
 	"gitlab.com/lition/lition-maker-nodemanager/service"
 	"gitlab.com/lition/lition/accounts/abi/bind"
 	"gitlab.com/lition/lition/crypto"
-	litionContractClient "gitlab.com/lition/lition_contracts/contracts/client"
+	litionScClient "gitlab.com/lition/lition_contracts/contracts/client"
 )
 
 func init() {
@@ -31,7 +31,7 @@ func main() {
 	nodeUrl := flag.String("nodeUrl", "http://localhost:22000", "descrciption...")
 	listenPort := flag.Int("listenPort", 8000, "descrciption...")
 	infuraURL := flag.String("infuraURL", "wss://ropsten.infura.io/ws", "descrciption...")
-	contractAddress := flag.String("contractAddress", "0xF4f9c1c8D66C8c9c09456BaD6a9890C3caa768c3", "descrciption...")
+	contractAddress := flag.String("contractAddress", "0xD754Dc0AF95a4f8615FC990344D9F7327042E658", "descrciption...")
 	privateKeyStr := flag.String("privateKey", "", "descrciption...")
 	chainID := flag.Int("chainID", 0, "descrciption...")
 	miningFlag := flag.Bool("miningFlag", false, "descrciption...")
@@ -91,9 +91,9 @@ func main() {
 	router.HandleFunc("/latency", nodeService.LatencyHandler).Methods("GET")
 	router.HandleFunc("/proposeValidator", nodeService.ProposeValidator).Methods("POST")
 	router.HandleFunc("/txnsearch/{txn_hash}", nodeService.TransactionSearchHandler).Methods("GET")
-	router.HandleFunc("/getNodeDetails/{index}", nodeService.GetNodeDetailsResponseHandler).Methods("GET")
-	router.HandleFunc("/getNodeList", nodeService.GetNodeListSelfResponseHandler).Methods("GET")
-	router.HandleFunc("/activeNodes", nodeService.ActiveNodesHandler).Methods("GET")
+	router.HandleFunc("/getNodeDetails/{index}", nodeService.Nms.GetNodeDetailsResponseHandler).Methods("GET")
+	router.HandleFunc("/getNodeList", nodeService.Nms.GetNodeListSelfResponseHandler).Methods("GET")
+	router.HandleFunc("/activeNodes", nodeService.Nms.ActiveNodesHandler).Methods("GET")
 	router.HandleFunc("/chartData", nodeService.GetChartDataHandler).Methods("GET")
 	router.HandleFunc("/contractList", nodeService.GetContractListHandler).Methods("GET")
 	router.HandleFunc("/contractCount", nodeService.GetContractCountHandler).Methods("GET")
@@ -180,7 +180,7 @@ func InitLitionContractClient(
 	contractAddress string,
 	chainID int,
 	privateKeyStr string,
-	miningFlag bool) (client *litionContractClient.ContractClient, auth *bind.TransactOpts, pubKey string, err error) {
+	miningFlag bool) (client *litionScClient.ContractClient, auth *bind.TransactOpts, pubKey string, err error) {
 
 	log.Info("Initialize Lition Contract Client")
 	err = nil
@@ -191,7 +191,7 @@ func InitLitionContractClient(
 	}
 
 	// Init Lition Smartcontract client
-	client, err = litionContractClient.NewClient(infuraURL, contractAddress, big.NewInt(int64(chainID)))
+	client, err = litionScClient.NewClient(infuraURL, contractAddress, big.NewInt(int64(chainID)))
 	if err != nil {
 		return
 	}

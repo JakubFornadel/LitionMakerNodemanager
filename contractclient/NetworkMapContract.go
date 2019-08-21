@@ -1,7 +1,7 @@
 package contractclient
 
 import (
-	"log"
+	log "github.com/sirupsen/logrus"
 
 	"gitlab.com/lition/lition-maker-nodemanager/client"
 	internalContract "gitlab.com/lition/lition-maker-nodemanager/contractclient/internalcontract"
@@ -39,7 +39,7 @@ func (nmc *NetworkMapContractClient) RegisterNode(name string, role string, publ
 
 	tx, err := nmc.Ic.RegisterNode(nmc.Auth, name, role, publicKey, enode, ip)
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 		return ""
 	}
 	return tx.Hash().String()
@@ -53,7 +53,7 @@ func (nmc *NetworkMapContractClient) GetNodeDetails(i int) NodeDetails {
 
 	details, err := nmc.Ic.GetNodeDetails(nil, uint16(i))
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 		return NodeDetails{}
 	}
 
@@ -71,7 +71,7 @@ func (nmc *NetworkMapContractClient) GetNodeDetailsList() []NodeDetails {
 	for i := 0; true; i++ {
 		details, err := nmc.Ic.GetNodeDetails(nil, uint16(i))
 		if err != nil {
-			log.Fatal(err)
+			log.Error(err)
 			return list
 		}
 		if details.E != "" && len(details.E) > 0 {
@@ -92,7 +92,7 @@ func (nmc *NetworkMapContractClient) GetNodeCount() int {
 
 	count, err := nmc.Ic.GetNodesCounter(nil)
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 		return 0
 	}
 
@@ -106,7 +106,7 @@ func (nmc *NetworkMapContractClient) UpdateNode(name string, role string, public
 	}
 	tx, err := nmc.Ic.UpdateNode(nmc.Auth, name, role, publicKey, enode, ip)
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 		return ""
 	}
 	return tx.Hash().String()

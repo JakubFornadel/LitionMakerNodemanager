@@ -102,36 +102,50 @@ func (nsi *NodeServiceImpl) GetGenesisHandler(w http.ResponseWriter, r *http.Req
 	nodename := request.Nodename
 	accPubKey := request.AccPubKey
 	chainID := request.ChainID
+	role := request.Role
 
 	log.Info(fmt.Sprint("Join request received from node: ", nodename, " with IP: ", foreignIP, ", enode: ", enode, ", accPubKey: ", accPubKey, " and chainID: ", chainID))
 
-	var err error
-	var hasVested, hasDeposited bool
-	hasDeposited, err = nsi.LitionContractClient.AccHasDeposited(accPubKey)
-	if err != nil {
-		log.Error("GetNmcAddress AccHasDeposited err: ", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Internal error"))
-	}
-
-	if hasDeposited == false {
-		hasVested, err = nsi.LitionContractClient.AccHasVested(accPubKey)
+	if role == "validator" {
+		hasVested, err := nsi.LitionContractClient.AccHasVested(accPubKey)
 		if err != nil {
-			log.Error("GetNmcAddress AccHasVested err: ", err)
+			log.Error("GetGenesisHandler AccHasVested err: ", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("Internal error"))
+			return
 		}
-	}
 
-	if hasVested || hasDeposited {
-		response := nsi.getGenesis(nsi.Url)
-		json.NewEncoder(w).Encode(response)
+		if hasVested == false {
+			log.Info("Access denied. Acc has not vested.")
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte("Access denied"))
+			return
+		}
+	} else if role == "non-validator" {
+		hasDeposited, err := nsi.LitionContractClient.AccHasDeposited(accPubKey)
+		if err != nil {
+			log.Error("GetGenesisHandler AccHasDeposited err: ", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("Internal error"))
+			return
+		}
+
+		if hasDeposited == false {
+			log.Info("Access denied. Acc has not deposited.")
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte("Access denied"))
+			return
+		}
+	} else {
+		log.Error("GetGenesis called with invalid role: ", role)
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte("Access denied"))
 		return
 	}
 
-	log.Info("Access denied. Acc has not vested.")
-	w.WriteHeader(http.StatusForbidden)
-	w.Write([]byte("Access denied"))
+	response := nsi.getGenesis(nsi.Url)
+	json.NewEncoder(w).Encode(response)
+	return
 }
 
 func (nsi *NodeServiceImpl) JoinRequestResponseHandler(w http.ResponseWriter, r *http.Request) {

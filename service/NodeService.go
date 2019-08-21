@@ -67,6 +67,7 @@ type JoinNetworkRequest struct {
 	Nodename  string `json:"nodename,omitempty"`
 	AccPubKey string `json:"acc-pub-key,omitempty"`
 	ChainID   string `json:"chain-id,omitempty"`
+	Role      string `json:"chain-id,omitempty"`
 }
 
 type GetGenesisResponse struct {

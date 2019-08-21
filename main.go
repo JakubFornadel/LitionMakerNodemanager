@@ -30,13 +30,13 @@ func init() {
 }
 
 func main() {
-	nodeUrl := flag.String("nodeUrl", "http://localhost:22000", "descrciption...")
-	listenPort := flag.Int("listenPort", 8000, "descrciption...")
-	infuraURL := flag.String("infuraURL", "wss://ropsten.infura.io/ws", "descrciption...")
-	contractAddress := flag.String("contractAddress", "0xD754Dc0AF95a4f8615FC990344D9F7327042E658", "descrciption...")
-	privateKeyStr := flag.String("privateKey", "", "descrciption...")
-	chainID := flag.Int("chainID", 0, "descrciption...")
-	miningFlag := flag.Bool("miningFlag", false, "descrciption...")
+	nodeUrl := flag.String("nodeUrl", "http://localhost:22000", "Node url")
+	listenPort := flag.Int("listenPort", 8000, "Listening Port")
+	infuraURL := flag.String("infuraURL", "", "Infura URL, which connects to the ethereum network (e.g. wss://ropsten.infura.io/ws)")
+	contractAddress := flag.String("contractAddress", "", "Lition contract address")
+	privateKeyStr := flag.String("privateKey", "", "Private Key for mining (Must be valid ethereum key)")
+	chainID := flag.Int("chainID", 0, "Chain ID of the sidechain registered in Lition contract to connect to")
+	miningFlag := flag.Bool("miningFlag", false, "Flag if nodemanager is running on top of geth, which is also mining")
 	flag.Parse()
 
 	listenPortStr := ":" + strconv.Itoa(*listenPort)

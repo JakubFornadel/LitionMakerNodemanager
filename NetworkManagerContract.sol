@@ -64,14 +64,12 @@ contract NetworkManagerContract {
         );
     }
 
-    function get_signature_hash_from_notary(uint32 notary_block, address[] memory miners,
+    function get_signature_hash_from_notary(uint256 notary_block, address[] memory miners,
                                   uint32[] memory blocks_mined, address[] memory users,
                                   uint32[] memory user_gas, uint32 largest_tx)
                                       public pure returns (bytes32) {
-       bytes memory prefix = "\x19Ethereum Signed Message:\n32";
-       string encoded_notary = abi.encodePacked(notary_block, miners, blocks_mined, users, user_gas, largest_tx);
-       bytes32 notary_hash keccak256(encoded_notary);
-       return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", _hash));
+       bytes32 notary_hash = keccak256(abi.encodePacked(notary_block, miners, blocks_mined, users, user_gas, largest_tx));
+       return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", notary_hash));
     }
 
     struct signatures {
@@ -80,7 +78,7 @@ contract NetworkManagerContract {
        bytes32[] ss;
     }
 
-    mapping (uint256 => signatures) public sigs;
+    mapping (uint256 => signatures) sigs;
 
     function store_signature(uint256 block_no, uint8 v, bytes32 r, bytes32 s) public {
        sigs[block_no].vs.push(v);
@@ -92,7 +90,7 @@ contract NetworkManagerContract {
        return sigs[block_no].vs.length;
     }
 
-    function get_signatures(uint256 block_no, uint256 index) public view returns (uint8[] memory v, bytes32[] memory r, bytes32[] memory s) {
+    function get_signatures(uint256 block_no, uint256 index) public view returns (uint8 v, bytes32 r, bytes32 s) {
        v = sigs[block_no].vs[index];
        r = sigs[block_no].rs[index];
        s = sigs[block_no].ss[index];

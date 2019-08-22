@@ -7,8 +7,6 @@ import (
 	"strconv"
 
 	"github.com/gorilla/mux"
-	"github.com/magiconair/properties"
-	"gitlab.com/lition/lition-maker-nodemanager/contracthandler"
 	"gitlab.com/lition/lition-maker-nodemanager/util"
 )
 
@@ -33,7 +31,6 @@ type UpdateNode struct {
 }
 
 func (nms *NetworkMapContractClient) UpdateNodeRequestsHandler(w http.ResponseWriter, r *http.Request) {
-	coinbase := nms.EthClient.Coinbase()
 	var request NodeDetails
 	_ = json.NewDecoder(r.Body).Decode(&request)
 	enode := request.Enode
@@ -41,16 +38,6 @@ func (nms *NetworkMapContractClient) UpdateNodeRequestsHandler(w http.ResponseWr
 	nodeName := request.Name
 	publickey := request.PublicKey
 	ip := request.IP
-	var contractAdd string
-	exists := util.PropertyExists("CONTRACT_ADD", "/home/setup.conf")
-	if exists != "" {
-		p := properties.MustLoadFile("/home/setup.conf", properties.UTF8)
-		contractAdd = util.MustGetString("CONTRACT_ADD", p)
-	}
-
-	cp := contracthandler.ContractParam{coinbase, contractAdd, "", nil}
-
-	nms.SetContractParam(cp)
 
 	response := nms.UpdateNode(nodeName, role, publickey, enode, ip)
 	w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -60,23 +47,12 @@ func (nms *NetworkMapContractClient) UpdateNodeRequestsHandler(w http.ResponseWr
 }
 
 func (nms *NetworkMapContractClient) GetNodeDetailsResponseHandler(w http.ResponseWriter, r *http.Request) {
-	coinbase := nms.EthClient.Coinbase()
 	params := mux.Vars(r)
 	index, err := strconv.ParseInt(params["index"], 10, 64)
 	i := int(index)
 	if err != nil {
 		fmt.Println(err)
 	}
-	var contractAdd string
-	exists := util.PropertyExists("CONTRACT_ADD", "/home/setup.conf")
-	if exists != "" {
-		p := properties.MustLoadFile("/home/setup.conf", properties.UTF8)
-		contractAdd = util.MustGetString("CONTRACT_ADD", p)
-	}
-
-	cp := contracthandler.ContractParam{coinbase, contractAdd, "", nil}
-	nms.SetContractParam(cp)
-
 	response := nms.GetNodeDetails(i)
 
 	w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -86,17 +62,6 @@ func (nms *NetworkMapContractClient) GetNodeDetailsResponseHandler(w http.Respon
 }
 
 func (nms *NetworkMapContractClient) GetNodeListResponseHandler(w http.ResponseWriter, r *http.Request) {
-	coinbase := nms.EthClient.Coinbase()
-	var contractAdd string
-	exists := util.PropertyExists("CONTRACT_ADD", "/home/setup.conf")
-	if exists != "" {
-		p := properties.MustLoadFile("/home/setup.conf", properties.UTF8)
-		contractAdd = util.MustGetString("CONTRACT_ADD", p)
-	}
-
-	cp := contracthandler.ContractParam{coinbase, contractAdd, "", nil}
-	nms.SetContractParam(cp)
-
 	response := nms.GetNodeDetailsList()
 
 	w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -106,22 +71,7 @@ func (nms *NetworkMapContractClient) GetNodeListResponseHandler(w http.ResponseW
 }
 
 func (nms *NetworkMapContractClient) GetNodeListSelfResponseHandler(w http.ResponseWriter, r *http.Request) {
-	coinbase := nms.EthClient.Coinbase()
 	enode := nms.EthClient.AdminNodeInfo().ID
-	//var contractAdd, nodename string
-	var contractAdd string
-	//existsA := util.PropertyExists("CONTRACT_ADD", "/home/setup.conf")
-	exists := util.PropertyExists("CONTRACT_ADD", "/home/setup.conf")
-	//existsB := util.PropertyExists("NODENAME", "/home/setup.conf")
-	//if existsA != "" && existsB != "" {
-	if exists != "" {
-		p := properties.MustLoadFile("/home/setup.conf", properties.UTF8)
-		contractAdd = util.MustGetString("CONTRACT_ADD", p)
-		//nodename = util.MustGetString("NODENAME", p)
-	}
-
-	cp := contracthandler.ContractParam{coinbase, contractAdd, "", nil}
-	nms.SetContractParam(cp)
 	adminPeers := nms.EthClient.AdminPeers()
 
 	var peerEnodes = map[string]bool{}
@@ -136,7 +86,6 @@ func (nms *NetworkMapContractClient) GetNodeListSelfResponseHandler(w http.Respo
 		response[i].Enode = nodeList[i].Enode
 		response[i].Role = nodeList[i].Role
 		response[i].Name = nodeList[i].Name
-		//if nodeList[i].Name == nodename {
 		if nodeList[i].Enode == enode {
 			response[i].Self = "true"
 			response[i].Active = "true"
@@ -156,16 +105,6 @@ func (nms *NetworkMapContractClient) GetNodeListSelfResponseHandler(w http.Respo
 }
 
 func (nms *NetworkMapContractClient) ActiveNodesHandler(w http.ResponseWriter, r *http.Request) {
-	coinbase := nms.EthClient.Coinbase()
-	var contractAdd string
-	exists := util.PropertyExists("CONTRACT_ADD", "/home/setup.conf")
-	if exists != "" {
-		p := properties.MustLoadFile("/home/setup.conf", properties.UTF8)
-		contractAdd = util.MustGetString("CONTRACT_ADD", p)
-	}
-
-	cp := contracthandler.ContractParam{coinbase, contractAdd, "", nil}
-	nms.SetContractParam(cp)
 	adminPeers := nms.EthClient.AdminPeers()
 	activeNodes := len(adminPeers) + 1
 	contractResponse := nms.GetNodeDetailsList()

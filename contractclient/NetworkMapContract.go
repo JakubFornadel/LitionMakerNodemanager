@@ -39,7 +39,7 @@ func (nmc *NetworkMapContractClient) RegisterNode(name string, role string, publ
 
 	tx, err := nmc.Ic.RegisterNode(nmc.Auth, name, role, publicKey, enode, ip)
 	if err != nil {
-		log.Error(err)
+		log.Error("RegisterNode: ", err)
 		return ""
 	}
 	return tx.Hash().String()
@@ -53,11 +53,11 @@ func (nmc *NetworkMapContractClient) GetNodeDetails(i int) NodeDetails {
 
 	details, err := nmc.Ic.GetNodeDetails(nil, uint16(i))
 	if err != nil {
-		log.Error(err)
+		log.Error("GetNodeDetails: ", err)
 		return NodeDetails{}
 	}
 
-	return NodeDetails{details.N, details.R, details.P, details.Ip, details.E}
+	return NodeDetails{details.N, details.R, details.P, details.E, details.Ip}
 }
 
 func (nmc *NetworkMapContractClient) GetNodeDetailsList() []NodeDetails {
@@ -71,11 +71,10 @@ func (nmc *NetworkMapContractClient) GetNodeDetailsList() []NodeDetails {
 	for i := 0; true; i++ {
 		details, err := nmc.Ic.GetNodeDetails(nil, uint16(i))
 		if err != nil {
-			log.Error(err)
 			return list
 		}
 		if details.E != "" && len(details.E) > 0 {
-			list = append(list, NodeDetails{details.N, details.R, details.P, details.Ip, details.E})
+			list = append(list, NodeDetails{details.N, details.R, details.P, details.E, details.Ip})
 		} else {
 			return list
 		}
@@ -92,7 +91,7 @@ func (nmc *NetworkMapContractClient) GetNodeCount() int {
 
 	count, err := nmc.Ic.GetNodesCounter(nil)
 	if err != nil {
-		log.Error(err)
+		log.Error("GetNodeCount", err)
 		return 0
 	}
 
@@ -106,7 +105,7 @@ func (nmc *NetworkMapContractClient) UpdateNode(name string, role string, public
 	}
 	tx, err := nmc.Ic.UpdateNode(nmc.Auth, name, role, publicKey, enode, ip)
 	if err != nil {
-		log.Error(err)
+		log.Error("UpdateNode: ", err)
 		return ""
 	}
 	return tx.Hash().String()

@@ -19,7 +19,6 @@ import (
 	"gitlab.com/lition/lition-maker-nodemanager/contractclient"
 	internalContract "gitlab.com/lition/lition-maker-nodemanager/contractclient/internalcontract"
 	"gitlab.com/lition/lition-maker-nodemanager/util"
-	"gitlab.com/lition/lition/accounts/abi/bind"
 	"gitlab.com/lition/lition/common"
 	"gitlab.com/lition/lition/ethclient"
 	litionScClient "gitlab.com/lition/lition_contracts/contracts/client"
@@ -235,7 +234,6 @@ type LatencyResponse struct {
 type NodeServiceImpl struct {
 	Url                  string
 	LitionContractClient *litionScClient.ContractClient
-	Auth                 *bind.TransactOpts
 	Nms                  *contractclient.NetworkMapContractClient
 }
 
@@ -345,7 +343,6 @@ func (nsi *NodeServiceImpl) getNmcAddress() (response GetNmcAddressResponse) {
 func (nsi *NodeServiceImpl) getCurrentNode(url string) NodeInfo {
 	var nodeUrl = url
 	ethClient := client.EthClient{nodeUrl}
-	var p *properties.Properties
 
 	nsi.InitInternalContract(url)
 
@@ -382,6 +379,8 @@ func (nsi *NodeServiceImpl) getCurrentNode(url string) NodeInfo {
 	nodename = strings.TrimPrefix(nodename, "start_")
 
 	var ipAddr, rpcPort, nodeName string
+	var p *properties.Properties
+	p = properties.MustLoadFile("/home/setup.conf", properties.UTF8)
 	existsA := util.PropertyExists("CURRENT_IP", "/home/setup.conf")
 	existsC := util.PropertyExists("RPC_PORT", "/home/setup.conf")
 	existsD := util.PropertyExists("NODENAME", "/home/setup.conf")
@@ -1458,7 +1457,7 @@ func (nsi *NodeServiceImpl) getNodeIPs(url string) []connectedIP {
 
 func (nsi *NodeServiceImpl) InitInternalContract(url string) {
 
-	if nsi.Nms == nil {
+	if nsi.Nms.Ic == nil {
 		var contractAdd string
 		exists := util.PropertyExists("CONTRACT_ADD", "/home/setup.conf")
 		if exists != "" {
@@ -1466,16 +1465,21 @@ func (nsi *NodeServiceImpl) InitInternalContract(url string) {
 			contractAdd = util.MustGetString("CONTRACT_ADD", p)
 		}
 
+		if len(contractAdd) < 1 {
+			log.Error("InitInternalContract empty contract address")
+			return
+		}
+
 		eth, err := ethclient.Dial(url)
 		if err != nil {
-			log.Error(err)
+			log.Error("InitInternalContract ", err)
 		}
 
 		lition, err := internalContract.NewLition(common.HexToAddress(contractAdd), eth)
 		if err != nil {
-			log.Error(err)
+			log.Error("internalContract.NewLition ", err)
 		}
-		nsi.Nms = &contractclient.NetworkMapContractClient{client.EthClient{url}, nsi.Auth, lition}
+		nsi.Nms.Ic = lition
 	}
 }
 

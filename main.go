@@ -15,6 +15,8 @@ import (
 
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
+	"gitlab.com/lition/lition-maker-nodemanager/client"
+	"gitlab.com/lition/lition-maker-nodemanager/contractclient"
 	"gitlab.com/lition/lition-maker-nodemanager/service"
 	"gitlab.com/lition/lition/accounts/abi/bind"
 	"gitlab.com/lition/lition/crypto"
@@ -45,7 +47,7 @@ func main() {
 	}
 
 	router := mux.NewRouter()
-	nodeService := service.NodeServiceImpl{*nodeUrl, contractClient, auth, nil}
+	nodeService := service.NodeServiceImpl{*nodeUrl, contractClient, &contractclient.NetworkMapContractClient{client.EthClient{*nodeUrl}, auth, nil}}
 
 	ticker := time.NewTicker(86400 * time.Second)
 	go func() {

@@ -163,6 +163,27 @@ func (ec *EthClient) ProposeValidator(address string, vote bool) error {
 	return nil
 }
 
+func (ec *EthClient) GetValidators(blockNumber string) []common.Address {
+	rpcClient := jsonrpc.NewClient(ec.Url)
+
+	txResponse := []common.Address{}
+	response, err := rpcClient.Call("istanbul_getValidators", blockNumber)
+
+	if err != nil {
+		fmt.Println(err)
+		return txResponse
+	}
+
+	err = response.GetObject(&txResponse)
+
+	if err != nil {
+		fmt.Println(err)
+		return txResponse
+	}
+
+	return txResponse
+}
+
 func (ec *EthClient) GetStatistics(start string, end string) IstanbulStats {
 	rpcClient := jsonrpc.NewClient(ec.Url)
 	response, err := rpcClient.Call("istanbul_getStatistics", start, end)

@@ -58,7 +58,7 @@ func main() {
 		}
 	}()
 
-	notaryTicker := time.NewTicker(3600 * time.Second)
+	notaryTicker := time.NewTicker(30 * time.Second)
 	go func() {
 		privateKey, err := crypto.HexToECDSA(*privateKeyStr)
 		if err != nil {

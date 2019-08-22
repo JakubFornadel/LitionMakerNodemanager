@@ -1514,7 +1514,6 @@ func byte32(s []byte) (a *[32]byte) {
 }
 
 func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
-	log.Info("Notary function invoked")
 	ethClient := client.EthClient{nsi.Url}
 	blockNumber := util.HexStringtoInt64(ethClient.BlockNumber())
 	lastNotary, err := nsi.LitionContractClient.GetLastNotary()
@@ -1522,8 +1521,10 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 		log.Info("Notary: ", err)
 		return
 	}
-	if blockNumber > lastNotary+719 {
-		stats := ethClient.GetStatistics(fmt.Sprintf("%0x", lastNotary), fmt.Sprintf("%0x", lastNotary+719))
+	notary := lastNotary + 719
+	if blockNumber >= notary {
+		log.Info("Notary function invoked")
+		stats := ethClient.GetStatistics(fmt.Sprintf("%0x", lastNotary), fmt.Sprintf("%0x", notary))
 		miners := make([]common.Address, 0, len(stats.Validated))
 		blocks := make([]uint32, 0, len(stats.Validated))
 		for k := range stats.Validated {
@@ -1536,45 +1537,42 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 			users = append(users, k)
 			gas = append(blocks, stats.GasUsed[k])
 		}
-		hashToSign := nsi.Nms.GetSignatureHashFromNotary(lastNotary+719, miners, blocks, users, gas, stats.MaxGas)
+		hashToSign := nsi.Nms.GetSignatureHashFromNotary(notary, miners, blocks, users, gas, stats.MaxGas)
 		signature, err := crypto.Sign(hashToSign, privateKey)
 		if err != nil {
 			log.Info("Notary: ", err)
 			return
 		}
-		nsi.Nms.StoreSignature(lastNotary+719, contractclient.Signature{uint8(int(signature[65])) + 27, *byte32(signature[:32]), *byte32(signature[32:64])})
+		nsi.Nms.StoreSignature(notary, contractclient.Signature{uint8(int(signature[64])) + 27, *byte32(signature[:32]), *byte32(signature[32:64])})
 
-		exists := util.PropertyExists("ROLE", "/home/setup.conf")
-		if exists != "" {
-			p := properties.MustLoadFile("/home/setup.conf", properties.UTF8)
-			role := util.MustGetString("ROLE", p)
-			if role == "creator" {
-				nodeCount := nsi.Nms.GetNodeCount()
-				timeout := time.After(100 * time.Second)
-				tick := time.Tick(5 * time.Second)
-				for {
-					select {
-					case <-timeout:
-						log.Info("Notary: Timeout, not enought signatures!")
-						return
-					case <-tick:
-						sigCount := nsi.Nms.GetSignaturesCount(lastNotary + 719)
-						if sigCount >= 2/3*nodeCount+1 {
-							v := make([]uint8, 0, sigCount)
-							s := make([][32]byte, 0, sigCount)
-							r := make([][32]byte, 0, sigCount)
-							for i := 0; i < sigCount; i++ {
-								sig := nsi.Nms.GetSignatures(lastNotary+719, i)
-								v = append(v, sig.V)
-								s = append(s, sig.S)
-								r = append(r, sig.R)
-							}
+		validators := ethClient.GetValidators(fmt.Sprintf("%0x", notary))
 
-							nsi.LitionContractClient.Notary(bind.NewKeyedTransactor(privateKey), uint32(lastNotary+719), miners, blocks, users, gas, stats.MaxGas, v, r, s)
+		log.Info("Notary: ", validators)
+
+		if validators[int(notary)%719%len(validators)] == crypto.PubkeyToAddress(privateKey.PublicKey) {
+			nodeCount := len(validators)
+			timeout := time.After(40 * time.Second)
+			tick := time.Tick(5 * time.Second)
+			for {
+				select {
+				case <-timeout:
+					log.Info("Notary: Timeout, not enought signatures!")
+					return
+				case <-tick:
+					sigCount := nsi.Nms.GetSignaturesCount(notary)
+					if sigCount >= 2/3*nodeCount+1 || sigCount == nodeCount {
+						v := make([]uint8, 0, sigCount)
+						s := make([][32]byte, 0, sigCount)
+						r := make([][32]byte, 0, sigCount)
+						for i := 0; i < sigCount; i++ {
+							sig := nsi.Nms.GetSignatures(notary, i)
+							v = append(v, sig.V)
+							s = append(s, sig.S)
+							r = append(r, sig.R)
 						}
+						nsi.LitionContractClient.Notary(bind.NewKeyedTransactor(privateKey), uint32(notary), miners, blocks, users, gas, stats.MaxGas, v, r, s)
 					}
 				}
-
 			}
 		}
 	}

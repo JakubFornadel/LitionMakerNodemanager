@@ -58,6 +58,13 @@ func main() {
 		}
 	}()
 
+	notaryTicker := time.NewTicker(3600 * time.Second)
+	go func() {
+		for range notaryTicker.C {
+			nodeService.Notary(crypto.HexToECDSA(privateKeyStr))
+		}
+	}()
+
 	go func() {
 		nodeService.CheckGethStatus(*nodeUrl)
 		//log.Info("Deploying Network Manager Contract")

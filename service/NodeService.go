@@ -2,6 +2,7 @@ package service
 
 import (
 	"bytes"
+	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -12,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unsafe"
 
 	"github.com/magiconair/properties"
 	log "github.com/sirupsen/logrus"
@@ -20,6 +22,7 @@ import (
 	internalContract "gitlab.com/lition/lition-maker-nodemanager/contractclient/internalcontract"
 	"gitlab.com/lition/lition-maker-nodemanager/util"
 	"gitlab.com/lition/lition/common"
+	"gitlab.com/lition/lition/crypto"
 	"gitlab.com/lition/lition/ethclient"
 	litionScClient "gitlab.com/lition/lition_contracts/contracts/client"
 )
@@ -1500,4 +1503,49 @@ func (nsi *NodeServiceImpl) UnvoteValidator(event *litionScClient.LitionScClient
 func (nsi *NodeServiceImpl) UnvoteValidatorInternal(validatorAddress string) {
 	log.Info("Aut. UnvoteValidator function invoked. Validator: ", validatorAddress)
 	nsi.proposeValidator(nsi.Url, validatorAddress, false)
+}
+
+func byte32(s []byte) (a *[32]byte) {
+	if len(a) <= len(s) {
+		a = (*[len(a)]byte)(unsafe.Pointer(&s[0]))
+	}
+	return a
+}
+
+func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
+	log.Info("Notary function invoked")
+	ethClient := client.EthClient{nsi.Url}
+	blockNumber := util.HexStringtoInt64(ethClient.BlockNumber())
+	lastNotary, err := nsi.LitionContractClient.GetLastNotary()
+	if err != nil {
+		log.Info("Notary: ", err)
+		return
+	}
+	if blockNumber > lastNotary+719 {
+		stats := ethClient.GetStatistics(fmt.Sprintf("%0x", lastNotary), fmt.Sprintf("%0x", lastNotary+719))
+		miners := make([]common.Address, 0, len(stats.Validated))
+		blocks := make([]uint32, 0, len(stats.Validated))
+		for k := range stats.Validated {
+			miners = append(miners, k)
+			blocks = append(blocks, stats.Validated[k])
+		}
+		users := make([]common.Address, 0, len(stats.GasUsed))
+		gas := make([]uint32, 0, len(stats.GasUsed))
+		for k := range stats.GasUsed {
+			users = append(users, k)
+			gas = append(blocks, stats.GasUsed[k])
+		}
+		hashToSign := nsi.Nms.GetSignatureHashFromNotary(lastNotary+719, miners, blocks, users, gas, stats.MaxGas)
+		signature, err := crypto.Sign(hashToSign, privateKey)
+		if err != nil {
+			log.Info("Notary: ", err)
+			return
+		}
+		nsi.Nms.StoreSignature(lastNotary+719, contractclient.Signature{uint8(int(signature[65])) + 27, *byte32(signature[:32]), *byte32(signature[32:64])})
+
+		//block := ethClient.GetBlockByNumber(string(lastNotary + 720))
+
+		//TODO send to mainnet
+
+	}
 }

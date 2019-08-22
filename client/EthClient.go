@@ -6,6 +6,7 @@ import (
 
 	"github.com/ybbus/jsonrpc"
 	"gitlab.com/lition/lition-maker-nodemanager/contracthandler"
+	"gitlab.com/lition/lition/common"
 )
 
 type AdminInfo struct {
@@ -129,6 +130,12 @@ type EthClient struct {
 	Url string
 }
 
+type IstanbulStats struct {
+	Validated map[common.Address]uint32 `json:"validated"`
+	GasUsed   map[common.Address]uint32 `json:"gas_used"`
+	MaxGas    uint32                    `json:"max_gas_used"`
+}
+
 func (ec *EthClient) GetTransactionByHash(txNo string) TransactionDetailsResponse {
 	rpcClient := jsonrpc.NewClient(ec.Url)
 	response, err := rpcClient.Call("eth_getTransactionByHash", txNo)
@@ -154,6 +161,23 @@ func (ec *EthClient) ProposeValidator(address string, vote bool) error {
 	}
 
 	return nil
+}
+
+func (ec *EthClient) GetStatistics(start string, end string) IstanbulStats {
+	rpcClient := jsonrpc.NewClient(ec.Url)
+	response, err := rpcClient.Call("istanbul_getStatistics", start, end)
+
+	if err != nil {
+		fmt.Println(err)
+		return IstanbulStats{}
+	}
+
+	txResponse := IstanbulStats{}
+	err = response.GetObject(&txResponse)
+	if err != nil {
+		fmt.Println(err)
+	}
+	return txResponse
 }
 
 func (ec *EthClient) GetBlockByNumber(blockNo string) BlockDetailsResponse {

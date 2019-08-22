@@ -60,8 +60,13 @@ func main() {
 
 	notaryTicker := time.NewTicker(3600 * time.Second)
 	go func() {
+		privateKey, err := crypto.HexToECDSA(*privateKeyStr)
+		if err != nil {
+			log.Error("Unable to process provided private key")
+			return
+		}
 		for range notaryTicker.C {
-			nodeService.Notary(crypto.HexToECDSA(privateKeyStr))
+			nodeService.Notary(privateKey)
 		}
 	}()
 

@@ -21,6 +21,7 @@ import (
 	"gitlab.com/lition/lition-maker-nodemanager/contractclient"
 	internalContract "gitlab.com/lition/lition-maker-nodemanager/contractclient/internalcontract"
 	"gitlab.com/lition/lition-maker-nodemanager/util"
+	"gitlab.com/lition/lition/accounts/abi/bind"
 	"gitlab.com/lition/lition/common"
 	"gitlab.com/lition/lition/crypto"
 	"gitlab.com/lition/lition/ethclient"
@@ -1543,9 +1544,38 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 		}
 		nsi.Nms.StoreSignature(lastNotary+719, contractclient.Signature{uint8(int(signature[65])) + 27, *byte32(signature[:32]), *byte32(signature[32:64])})
 
-		//block := ethClient.GetBlockByNumber(string(lastNotary + 720))
+		exists := util.PropertyExists("ROLE", "/home/setup.conf")
+		if exists != "" {
+			p := properties.MustLoadFile("/home/setup.conf", properties.UTF8)
+			role := util.MustGetString("ROLE", p)
+			if role == "creator" {
+				nodeCount := nsi.Nms.GetNodeCount()
+				timeout := time.After(100 * time.Second)
+				tick := time.Tick(5 * time.Second)
+				for {
+					select {
+					case <-timeout:
+						log.Info("Notary: Timeout, not enought signatures!")
+						return
+					case <-tick:
+						sigCount := nsi.Nms.GetSignaturesCount(lastNotary + 719)
+						if sigCount >= 2/3*nodeCount+1 {
+							v := make([]uint8, 0, sigCount)
+							s := make([][32]byte, 0, sigCount)
+							r := make([][32]byte, 0, sigCount)
+							for i := 0; i < sigCount; i++ {
+								sig := nsi.Nms.GetSignatures(lastNotary+719, i)
+								v = append(v, sig.V)
+								s = append(s, sig.S)
+								r = append(r, sig.R)
+							}
 
-		//TODO send to mainnet
+							nsi.LitionContractClient.Notary(bind.NewKeyedTransactor(privateKey), uint32(lastNotary+719), miners, blocks, users, gas, stats.MaxGas, v, r, s)
+						}
+					}
+				}
 
+			}
+		}
 	}
 }

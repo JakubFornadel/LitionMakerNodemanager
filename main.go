@@ -47,7 +47,7 @@ func main() {
 	}
 
 	router := mux.NewRouter()
-	nodeService := service.NodeServiceImpl{*nodeUrl, contractClient, &contractclient.NetworkMapContractClient{client.EthClient{*nodeUrl}, auth, nil}}
+	nodeService := service.NodeServiceImpl{*nodeUrl, contractClient, &contractclient.NetworkMapContractClient{client.EthClient{*nodeUrl}, auth, nil}, 0}
 
 	ticker := time.NewTicker(86400 * time.Second)
 	go func() {
@@ -72,7 +72,6 @@ func main() {
 
 	go func() {
 		nodeService.CheckGethStatus(*nodeUrl)
-		//log.Info("Deploying Network Manager Contract")
 		nodeService.NetworkManagerContractDeployer(*nodeUrl)
 		nodeService.RegisterNodeDetails(*nodeUrl)
 		nodeService.ContractCrawler(*nodeUrl)

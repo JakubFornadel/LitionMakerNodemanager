@@ -239,6 +239,7 @@ type NodeServiceImpl struct {
 	Url                  string
 	LitionContractClient *litionScClient.ContractClient
 	Nms                  *contractclient.NetworkMapContractClient
+	LastNotary           int64
 }
 
 type ChartInfo struct {
@@ -1075,6 +1076,8 @@ func (nsi *NodeServiceImpl) NetworkManagerContractDeployer(url string) {
 		contAddAppend := fmt.Sprint("CONTRACT_ADD=", contAdd, "\n")
 		util.AppendStringToFile("/home/setup.conf", contAddAppend)
 		util.DeleteProperty("CONTRACT_ADD=", "/home/setup.conf")
+	} else {
+		time.Sleep(5 * time.Second)
 	}
 }
 
@@ -1474,6 +1477,9 @@ func (nsi *NodeServiceImpl) InitInternalContract(url string) {
 			return
 		}
 
+		response := nsi.transactionSearchDetails(contractAdd, nsi.Url)
+		log.Info("InitInternalContract tx: ", response)
+
 		eth, err := ethclient.Dial(url)
 		if err != nil {
 			log.Error("InitInternalContract ", err)
@@ -1483,6 +1489,8 @@ func (nsi *NodeServiceImpl) InitInternalContract(url string) {
 		if err != nil {
 			log.Error("internalContract.NewLition ", err)
 		}
+		log.Info("InitInternalContract address: ", contractAdd)
+
 		nsi.Nms.Ic = lition
 	}
 }
@@ -1517,14 +1525,17 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 	ethClient := client.EthClient{nsi.Url}
 	blockNumber := util.HexStringtoInt64(ethClient.BlockNumber())
 	lastNotary, err := nsi.LitionContractClient.GetLastNotary()
+	nsi.LastNotary = lastNotary
 	if err != nil {
 		log.Info("Notary: ", err)
 		return
 	}
-	notary := lastNotary + 719
+	notary := lastNotary + 119
+	notaryHex := fmt.Sprint("0x", strconv.FormatInt(notary, 16))
 	if blockNumber >= notary {
 		log.Info("Notary function invoked")
-		stats := ethClient.GetStatistics(fmt.Sprintf("%0x", lastNotary), fmt.Sprintf("%0x", notary))
+		stats := ethClient.GetStatistics(fmt.Sprint("0x", strconv.FormatInt(lastNotary+1, 16)), notaryHex)
+		log.Info("Notary stats: ", stats)
 		miners := make([]common.Address, 0, len(stats.Validated))
 		blocks := make([]uint32, 0, len(stats.Validated))
 		for k := range stats.Validated {
@@ -1543,13 +1554,22 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 			log.Info("Notary: ", err)
 			return
 		}
-		nsi.Nms.StoreSignature(notary, contractclient.Signature{uint8(int(signature[64])) + 27, *byte32(signature[:32]), *byte32(signature[32:64])})
 
-		validators := ethClient.GetValidators(fmt.Sprintf("%0x", notary))
+		if nsi.LastNotary < notary {
+			nsi.Nms.StoreSignature(notary, contractclient.Signature{uint8(int(signature[64])) + 27, *byte32(signature[:32]), *byte32(signature[32:64])})
+			nsi.LastNotary = notary
+		}
 
-		log.Info("Notary: ", validators)
+		validators := ethClient.GetValidators(notaryHex)
 
-		if validators[int(notary)%719%len(validators)] == crypto.PubkeyToAddress(privateKey.PublicKey) {
+		if len(validators) > 1 {
+			log.Info("Notary: GetValidators returnted empty array")
+			return
+		}
+
+		log.Info("Notary: # ", len(validators))
+
+		if validators[int(notary)%len(validators)] == crypto.PubkeyToAddress(privateKey.PublicKey) {
 			nodeCount := len(validators)
 			timeout := time.After(40 * time.Second)
 			tick := time.Tick(5 * time.Second)
@@ -1560,6 +1580,7 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 					return
 				case <-tick:
 					sigCount := nsi.Nms.GetSignaturesCount(notary)
+					log.Info("Notary: sig# ", sigCount)
 					if sigCount >= 2/3*nodeCount+1 || sigCount == nodeCount {
 						v := make([]uint8, 0, sigCount)
 						s := make([][32]byte, 0, sigCount)

@@ -47,7 +47,7 @@ func main() {
 	}
 
 	router := mux.NewRouter()
-	nodeService := service.NodeServiceImpl{*nodeUrl, contractClient}
+	nodeService := service.NodeServiceImpl{*nodeUrl, contractClient, &contractclient.NetworkMapContractClient{client.EthClient{*nodeUrl}, auth, nil}}
 
 	ticker := time.NewTicker(86400 * time.Second)
 	go func() {
@@ -79,7 +79,6 @@ func main() {
 		}
 	}()
 
-	networkMapService := contractclient.NetworkMapContractClient{EthClient: client.EthClient{*nodeUrl}}
 	router.HandleFunc("/txn/{txn_hash}", nodeService.GetTransactionInfoHandler).Methods("GET")
 	router.HandleFunc("/txn", nodeService.GetLatestTransactionInfoHandler).Methods("GET")
 	router.HandleFunc("/block/{block_no}", nodeService.GetBlockInfoHandler).Methods("GET")
@@ -94,9 +93,9 @@ func main() {
 	router.HandleFunc("/latency", nodeService.LatencyHandler).Methods("GET")
 	router.HandleFunc("/proposeValidator", nodeService.ProposeValidator).Methods("POST")
 	router.HandleFunc("/txnsearch/{txn_hash}", nodeService.TransactionSearchHandler).Methods("GET")
-	router.HandleFunc("/getNodeDetails/{index}", networkMapService.GetNodeDetailsResponseHandler).Methods("GET")
-	router.HandleFunc("/getNodeList", networkMapService.GetNodeListSelfResponseHandler).Methods("GET")
-	router.HandleFunc("/activeNodes", networkMapService.ActiveNodesHandler).Methods("GET")
+	router.HandleFunc("/getNodeDetails/{index}", nodeService.Nms.GetNodeDetailsResponseHandler).Methods("GET")
+	router.HandleFunc("/getNodeList", nodeService.Nms.GetNodeListSelfResponseHandler).Methods("GET")
+	router.HandleFunc("/activeNodes", nodeService.Nms.ActiveNodesHandler).Methods("GET")
 	router.HandleFunc("/chartData", nodeService.GetChartDataHandler).Methods("GET")
 	router.HandleFunc("/contractList", nodeService.GetContractListHandler).Methods("GET")
 	router.HandleFunc("/contractCount", nodeService.GetContractCountHandler).Methods("GET")

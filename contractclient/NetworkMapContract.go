@@ -1,13 +1,12 @@
 package contractclient
 
 import (
-	"gitlab.com/lition/lition-maker-nodemanager/client"
-	"gitlab.com/lition/lition-maker-nodemanager/contracthandler"
-)
+	log "github.com/sirupsen/logrus"
 
-const registerNodeFunSig = "0x82cb1a2a"
-const updateNodeFunSig = "0xe1d33203"
-const getNodeDetailsFunSig = "0x7f11a8ed"
+	"gitlab.com/lition/lition-maker-nodemanager/client"
+	internalContract "gitlab.com/lition/lition-maker-nodemanager/contractclient/internalcontract"
+	"gitlab.com/lition/lition/accounts/abi/bind"
+)
 
 type NodeDetails struct {
 	Name      string `json:"nodeName,omitempty"`
@@ -19,58 +18,63 @@ type NodeDetails struct {
 
 type NetworkMapContractClient struct {
 	client.EthClient
-	ContractParam contracthandler.ContractParam
+	Auth *bind.TransactOpts
+	Ic   *internalContract.Lition
 }
 
 type GetNodeDetailsParam int
 
-func (nmc *NetworkMapContractClient) SetContractParam(cp contracthandler.ContractParam) {
-	nmc.ContractParam = cp
-}
-
 func (nmc *NetworkMapContractClient) RegisterNode(name string, role string, publicKey string, enode string, ip string) string {
 
-	if nmc.ContractParam.To == "" || nmc.ContractParam.From == "" {
+	if nmc.Ic == nil {
 		return ""
 	}
 
-	nd := NodeDetails{name, role, publicKey, enode, ip}
 	nodeList := nmc.GetNodeDetailsList()
 	for _, nodeDetails := range nodeList {
 		if nodeDetails.Enode == enode {
 			return "Exists"
 		}
 	}
-	return nmc.SendTransaction(nmc.ContractParam, RegisterUpdateNodeFuncHandler{nd, registerNodeFunSig})
 
+	tx, err := nmc.Ic.RegisterNode(nmc.Auth, name, role, publicKey, enode, ip)
+	if err != nil {
+		log.Error("RegisterNode: ", err)
+		return ""
+	}
+	return tx.Hash().String()
 }
 
 func (nmc *NetworkMapContractClient) GetNodeDetails(i int) NodeDetails {
 
-	if nmc.ContractParam.To == "" || nmc.ContractParam.From == "" {
+	if nmc.Ic == nil {
 		return NodeDetails{}
 	}
 
-	encoderDecoder := GetNodeDetailsFuncHandler{index: i, funcSig: getNodeDetailsFunSig}
-	nmc.EthCall(nmc.ContractParam, encoderDecoder, &encoderDecoder)
+	details, err := nmc.Ic.GetNodeDetails(nil, uint16(i))
+	if err != nil {
+		log.Error("GetNodeDetails: ", err)
+		return NodeDetails{}
+	}
 
-	return encoderDecoder.result
+	return NodeDetails{details.N, details.R, details.P, details.E, details.Ip}
 }
 
 func (nmc *NetworkMapContractClient) GetNodeDetailsList() []NodeDetails {
 
-	if nmc.ContractParam.To == "" || nmc.ContractParam.From == "" {
-		return []NodeDetails{}
-	}
-
 	var list []NodeDetails
 
-	for i := 0; true; i++ {
-		encoderDecoder := GetNodeDetailsFuncHandler{index: i, funcSig: getNodeDetailsFunSig}
-		nmc.EthCall(nmc.ContractParam, encoderDecoder, &encoderDecoder)
+	if nmc.Ic == nil {
+		return list
+	}
 
-		if encoderDecoder.result.Enode != "" && len(encoderDecoder.result.Enode) > 0 {
-			list = append(list, encoderDecoder.result)
+	for i := 0; true; i++ {
+		details, err := nmc.Ic.GetNodeDetails(nil, uint16(i))
+		if err != nil {
+			return list
+		}
+		if details.E != "" && len(details.E) > 0 {
+			list = append(list, NodeDetails{details.N, details.R, details.P, details.E, details.Ip})
 		} else {
 			return list
 		}
@@ -79,60 +83,32 @@ func (nmc *NetworkMapContractClient) GetNodeDetailsList() []NodeDetails {
 	return list
 }
 
+func (nmc *NetworkMapContractClient) GetNodeCount() int {
+
+	if nmc.Ic == nil {
+		return 0
+	}
+
+	count, err := nmc.Ic.GetNodesCounter(nil)
+	if err != nil {
+		log.Error("GetNodeCount", err)
+		return 0
+	}
+
+	return int(count.Int64())
+}
+
 func (nmc *NetworkMapContractClient) UpdateNode(name string, role string, publicKey string, enode string, ip string) string {
 
-	if nmc.ContractParam.To == "" || nmc.ContractParam.From == "" {
+	if nmc.Ic == nil {
 		return ""
 	}
-
-	nd := NodeDetails{name, role, publicKey, enode, ip}
-	return nmc.SendTransaction(nmc.ContractParam, RegisterUpdateNodeFuncHandler{nd, updateNodeFunSig})
-}
-
-type RegisterUpdateNodeFuncHandler struct {
-	nd      NodeDetails
-	funcSig string
-}
-
-func (h RegisterUpdateNodeFuncHandler) Encode() string {
-
-	sig := "string,string,string,string,string"
-
-	param := []interface{}{h.nd.Name, h.nd.Role, h.nd.PublicKey, h.nd.Enode, h.nd.IP}
-
-	data := h.funcSig + contracthandler.FunctionProcessor{sig}.Encode(param)
-
-	return data
-}
-
-type GetNodeDetailsFuncHandler struct {
-	index   int
-	funcSig string
-	result  NodeDetails
-}
-
-func (g *GetNodeDetailsFuncHandler) Decode(r string) {
-	var nd NodeDetails
-
-	if r == "" || len(r) < 1 {
-		g.result = nd
-		return
+	tx, err := nmc.Ic.UpdateNode(nmc.Auth, name, role, publicKey, enode, ip)
+	if err != nil {
+		log.Error("UpdateNode: ", err)
+		return ""
 	}
-
-	sig := "string,string,string,string,string,uint16"
-
-	resultArray := contracthandler.FunctionProcessor{sig}.Decode(r)
-
-	g.result = NodeDetails{resultArray[0].(string), resultArray[1].(string), resultArray[2].(string), resultArray[4].(string), resultArray[3].(string)}
-}
-
-func (g GetNodeDetailsFuncHandler) Encode() string {
-
-	sig := "uint16"
-
-	param := []interface{}{g.index}
-
-	return g.funcSig + contracthandler.FunctionProcessor{sig}.Encode(param)
+	return tx.Hash().String()
 }
 
 type DeployContractHandler struct {

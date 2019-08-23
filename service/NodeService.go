@@ -17,8 +17,10 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gitlab.com/lition/lition-maker-nodemanager/client"
 	"gitlab.com/lition/lition-maker-nodemanager/contractclient"
-	"gitlab.com/lition/lition-maker-nodemanager/contracthandler"
+	internalContract "gitlab.com/lition/lition-maker-nodemanager/contractclient/internalcontract"
 	"gitlab.com/lition/lition-maker-nodemanager/util"
+	"gitlab.com/lition/lition/common"
+	"gitlab.com/lition/lition/ethclient"
 	litionScClient "gitlab.com/lition/lition_contracts/contracts/client"
 )
 
@@ -232,6 +234,7 @@ type LatencyResponse struct {
 type NodeServiceImpl struct {
 	Url                  string
 	LitionContractClient *litionScClient.ContractClient
+	Nms                  *contractclient.NetworkMapContractClient
 }
 
 type ChartInfo struct {
@@ -340,18 +343,10 @@ func (nsi *NodeServiceImpl) getNmcAddress() (response GetNmcAddressResponse) {
 func (nsi *NodeServiceImpl) getCurrentNode(url string) NodeInfo {
 	var nodeUrl = url
 	ethClient := client.EthClient{nodeUrl}
-	fromAddress := ethClient.Coinbase()
-	var contractAdd string
-	var p *properties.Properties
-	exists := util.PropertyExists("CONTRACT_ADD", "/home/setup.conf")
-	if exists != "" {
-		p = properties.MustLoadFile("/home/setup.conf", properties.UTF8)
-		contractAdd = util.MustGetString("CONTRACT_ADD", p)
-	}
 
-	nms := contractclient.NetworkMapContractClient{client.EthClient{url}, contracthandler.ContractParam{fromAddress, contractAdd, "", nil}}
+	nsi.InitInternalContract(url)
 
-	totalCount := len(nms.GetNodeDetailsList())
+	totalCount := nsi.Nms.GetNodeCount()
 	var activeStatus string
 	active := ethClient.NetListening()
 	if active == true {
@@ -384,6 +379,8 @@ func (nsi *NodeServiceImpl) getCurrentNode(url string) NodeInfo {
 	nodename = strings.TrimPrefix(nodename, "start_")
 
 	var ipAddr, rpcPort, nodeName string
+	var p *properties.Properties
+	p = properties.MustLoadFile("/home/setup.conf", properties.UTF8)
 	existsA := util.PropertyExists("CURRENT_IP", "/home/setup.conf")
 	existsC := util.PropertyExists("RPC_PORT", "/home/setup.conf")
 	existsD := util.PropertyExists("NODENAME", "/home/setup.conf")
@@ -761,26 +758,18 @@ func (nsi *NodeServiceImpl) joinRequestResponse(enode string, status string) Suc
 func (nsi *NodeServiceImpl) deployContract(pubKeys []string, fileName []string, private bool, url string) []ContractJson {
 	var nodeUrl = url
 	ethClient := client.EthClient{nodeUrl}
-	fromAddress := ethClient.Coinbase()
 
-	//@TODO: Dont use absolute paths
-	var contractAdd string
-	exists := util.PropertyExists("CONTRACT_ADD", "/home/setup.conf")
-	if exists != "" {
-		p := properties.MustLoadFile("/home/setup.conf", properties.UTF8)
-		contractAdd = util.MustGetString("CONTRACT_ADD", p)
-	}
-	nms := contractclient.NetworkMapContractClient{client.EthClient{url}, contracthandler.ContractParam{fromAddress, contractAdd, "", nil}}
+	nsi.InitInternalContract(url)
+
 	if private == true && pubKeys[0] == "" {
 		enode := ethClient.AdminNodeInfo().ID
-		peerNo := len(nms.GetNodeDetailsList())
+		peerNo := nsi.Nms.GetNodeCount()
 		publicKeys := make([]string, peerNo-1)
 		for i := 0; i < peerNo; i++ {
-			if enode != nms.GetNodeDetails(i).Enode {
-				publicKeys[i-1] = nms.GetNodeDetails(i).PublicKey
+			if enode != nsi.Nms.GetNodeDetails(i).Enode {
+				publicKeys[i-1] = nsi.Nms.GetNodeDetails(i).PublicKey
 			}
 		}
-		//pubKeys = []string{"R1fOFUfzBbSVaXEYecrlo9rENW0dam0kmaA2pasGM14=", "Er5J8G+jXQA9O2eu7YdhkraYM+j+O5ArnMSZ24PpLQY="}
 		pubKeys = publicKeys
 	}
 	var solc string
@@ -957,61 +946,15 @@ func (nsi *NodeServiceImpl) latestBlockDetails(url string) LatestBlockResponse {
 	return latestBlockResponse
 }
 
-//func (nsi *NodeServiceImpl) latency(url string) ([]LatencyResponse) {
-//	var nodeUrl = url
-//	ethClient := client.EthClient{nodeUrl}
-//	otherPeersResponse := ethClient.AdminPeers()
-//	peerCount := len(otherPeersResponse)
-//	latencyResponse := make([]LatencyResponse, peerCount+1)
-//	for i := 0; i < peerCount+1; i++ {
-//		var latOut bytes.Buffer
-//		var ip string
-//		if i == peerCount {
-//			ip = "localhost"
-//			thisAdminInfo := ethClient.AdminNodeInfo()
-//			latencyResponse[i].EnodeID = thisAdminInfo.ID
-//		} else {
-//			ip = otherPeersResponse[i].Network.LocalAddress
-//			ipString := strings.Split(ip, ":")
-//			ip = ipString[0]
-//			latencyResponse[i].EnodeID = otherPeersResponse[i].ID
-//		}
-//		command := fmt.Sprint("ping -c 4 ", ip, " |  awk -F'/' '{ print $5 }' | tail -1")
-//		cmd := exec.Command("bash", "-c", command)
-//		cmd.Stdout = &latOut
-//		err := cmd.Run()
-//		if err != nil {
-//			fmt.Println(err)
-//		}
-//		latencyString := strings.TrimSuffix(latOut.String(), "\n")
-//		latency, err := strconv.ParseFloat(latencyString, 10)
-//		latency = latency * 1000
-//		latencyStr := strconv.FormatFloat(latency, 'f', 0, 64)
-//		latencyResponse[i].Latency = latencyStr
-//	}
-//	return latencyResponse
-//}
-
 func (nsi *NodeServiceImpl) latency(url string) []LatencyResponse {
-	var nodeUrl = url
-	ethClient := client.EthClient{nodeUrl}
-	fromAddress := ethClient.Coinbase()
-	var contractAdd string
-	exists := util.PropertyExists("CONTRACT_ADD", "/home/setup.conf")
-	if exists != "" {
-		p := properties.MustLoadFile("/home/setup.conf", properties.UTF8)
-		contractAdd = util.MustGetString("CONTRACT_ADD", p)
-	}
+	nsi.InitInternalContract(url)
 
-	nms := contractclient.NetworkMapContractClient{client.EthClient{url}, contracthandler.ContractParam{fromAddress, contractAdd, "", nil}}
-
-	peerNo := len(nms.GetNodeDetailsList())
-
+	peerNo := nsi.Nms.GetNodeCount()
 	latencyResponse := make([]LatencyResponse, peerNo)
 	for i := 0; i < peerNo; i++ {
 		var latOut bytes.Buffer
-		ip := nms.GetNodeDetails(i).IP
-		latencyResponse[i].EnodeID = nms.GetNodeDetails(i).Enode
+		ip := nsi.Nms.GetNodeDetails(i).IP
+		latencyResponse[i].EnodeID = nsi.Nms.GetNodeDetails(i).Enode
 		command := fmt.Sprint("ping -c 4 ", ip, " |  awk -F'/' '{ print $5 }' | tail -1")
 		cmd := exec.Command("bash", "-c", command)
 		cmd.Stdout = &latOut
@@ -1093,26 +1036,23 @@ func (nsi *NodeServiceImpl) RegisterNodeDetails(url string) {
 		ethClient := client.EthClient{nodeUrl}
 
 		enode := ethClient.AdminNodeInfo().ID
-		fromAddress := ethClient.Coinbase()
-		var ipAddr, nodename, pubKey, role, contractAdd string
+		var ipAddr, nodename, pubKey, role string
 		existsA := util.PropertyExists("CURRENT_IP", "/home/setup.conf")
 		existsB := util.PropertyExists("NODENAME", "/home/setup.conf")
 		existsC := util.PropertyExists("PUBKEY", "/home/setup.conf")
 		existsD := util.PropertyExists("ROLE", "/home/setup.conf")
-		existsF := util.PropertyExists("CONTRACT_ADD", "/home/setup.conf")
-		if existsA != "" && existsB != "" && existsC != "" && existsD != "" && existsF != "" {
+		if existsA != "" && existsB != "" && existsC != "" && existsD != "" {
 			p := properties.MustLoadFile("/home/setup.conf", properties.UTF8)
 			ipAddr = util.MustGetString("CURRENT_IP", p)
 			nodename = util.MustGetString("NODENAME", p)
 			pubKey = util.MustGetString("PUBKEY", p)
 			role = util.MustGetString("ROLE", p)
-			contractAdd = util.MustGetString("CONTRACT_ADD", p)
 		}
 		registered := fmt.Sprint("REGISTERED=TRUE", "\n")
 		util.AppendStringToFile("/home/setup.conf", registered)
 		util.DeleteProperty("REGISTERED=", "/home/setup.conf")
-		nms := contractclient.NetworkMapContractClient{client.EthClient{url}, contracthandler.ContractParam{fromAddress, contractAdd, "", nil}}
-		nms.RegisterNode(nodename, role, pubKey, enode, ipAddr)
+		nsi.InitInternalContract(url)
+		nsi.Nms.RegisterNode(nodename, role, pubKey, enode, ipAddr)
 	}
 }
 
@@ -1497,16 +1437,9 @@ func (nsi *NodeServiceImpl) getNodeIPs(url string) []connectedIP {
 	var ipList []connectedIP
 	var connectedIPs = map[string]int{}
 	ethClient := client.EthClient{nodeUrl}
-	fromAddress := ethClient.Coinbase()
 	enode := ethClient.AdminNodeInfo().ID
-	var contractAdd string
-	exists := util.PropertyExists("CONTRACT_ADD", "/home/setup.conf")
-	if exists != "" {
-		p := properties.MustLoadFile("/home/setup.conf", properties.UTF8)
-		contractAdd = util.MustGetString("CONTRACT_ADD", p)
-	}
-	nms := contractclient.NetworkMapContractClient{client.EthClient{url}, contracthandler.ContractParam{fromAddress, contractAdd, "", nil}}
-	nodeList := nms.GetNodeDetailsList()
+	nsi.InitInternalContract(url)
+	nodeList := nsi.Nms.GetNodeDetailsList()
 	for _, node := range nodeList {
 		if node.Enode != enode {
 			count := connectedIPs[node.IP]
@@ -1520,6 +1453,34 @@ func (nsi *NodeServiceImpl) getNodeIPs(url string) []connectedIP {
 		ipList = append(ipList, connected)
 	}
 	return ipList
+}
+
+func (nsi *NodeServiceImpl) InitInternalContract(url string) {
+
+	if nsi.Nms.Ic == nil {
+		var contractAdd string
+		exists := util.PropertyExists("CONTRACT_ADD", "/home/setup.conf")
+		if exists != "" {
+			p := properties.MustLoadFile("/home/setup.conf", properties.UTF8)
+			contractAdd = util.MustGetString("CONTRACT_ADD", p)
+		}
+
+		if len(contractAdd) < 1 {
+			log.Error("InitInternalContract empty contract address")
+			return
+		}
+
+		eth, err := ethclient.Dial(url)
+		if err != nil {
+			log.Error("InitInternalContract ", err)
+		}
+
+		lition, err := internalContract.NewLition(common.HexToAddress(contractAdd), eth)
+		if err != nil {
+			log.Error("internalContract.NewLition ", err)
+		}
+		nsi.Nms.Ic = lition
+	}
 }
 
 // This wrapper is used in event listener for automatic voting

@@ -69,7 +69,7 @@ contract NetworkManagerContract {
                                   uint32[] memory user_gas, uint32 largest_tx)
                                       public pure returns (bytes32) {
        bytes32 notary_hash = keccak256(abi.encodePacked(notary_block, miners, blocks_mined, users, user_gas, largest_tx));
-       return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", notary_hash));
+       return notary_hash;
     }
 
     struct signatures {

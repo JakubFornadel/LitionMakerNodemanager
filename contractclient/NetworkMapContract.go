@@ -1,11 +1,14 @@
 package contractclient
 
 import (
+	"math/big"
+
 	log "github.com/sirupsen/logrus"
 
 	"gitlab.com/lition/lition-maker-nodemanager/client"
 	internalContract "gitlab.com/lition/lition-maker-nodemanager/contractclient/internalcontract"
 	"gitlab.com/lition/lition/accounts/abi/bind"
+	"gitlab.com/lition/lition/common"
 )
 
 type NodeDetails struct {
@@ -23,6 +26,12 @@ type NetworkMapContractClient struct {
 }
 
 type GetNodeDetailsParam int
+
+type Signature struct {
+	V uint8
+	R [32]byte
+	S [32]byte
+}
 
 func (nmc *NetworkMapContractClient) RegisterNode(name string, role string, publicKey string, enode string, ip string) string {
 
@@ -109,6 +118,52 @@ func (nmc *NetworkMapContractClient) UpdateNode(name string, role string, public
 		return ""
 	}
 	return tx.Hash().String()
+}
+
+func (nmc *NetworkMapContractClient) GetSignatureHashFromNotary(notary_block int64, miners []common.Address, blocks_mined []uint32, users []common.Address, user_gas []uint32, largest_tx uint32) []byte {
+	if nmc.Ic == nil {
+		return []byte{}
+	}
+	response, err := nmc.Ic.GetSignatureHashFromNotary(nil, big.NewInt(notary_block), miners, blocks_mined, users, user_gas, largest_tx)
+	if err != nil {
+		log.Error("GetSignatureHashFromNotary: ", err)
+		return []byte{}
+	}
+	return response[:]
+}
+
+func (nmc *NetworkMapContractClient) GetSignatures(notary_block int64, index int) Signature {
+	if nmc.Ic == nil {
+		return Signature{}
+	}
+	result, err := nmc.Ic.GetSignatures(nil, big.NewInt(notary_block), big.NewInt(int64(index)))
+	if err != nil {
+		log.Error("GetSignatures: ", err)
+		return Signature{}
+	}
+	return result
+}
+
+func (nmc *NetworkMapContractClient) GetSignaturesCount(notary_block int64) int {
+	if nmc.Ic == nil {
+		return 0
+	}
+	result, err := nmc.Ic.GetSignaturesCount(nil, big.NewInt(notary_block))
+	if err != nil {
+		log.Error("GetSignatures: ", err)
+		return 0
+	}
+	return int(result.Int64())
+}
+
+func (nmc *NetworkMapContractClient) StoreSignature(notary_block int64, sig Signature) {
+	if nmc.Ic == nil {
+		return
+	}
+	_, err := nmc.Ic.StoreSignature(nmc.Auth, big.NewInt(notary_block), sig.V, sig.R, sig.S)
+	if err != nil {
+		log.Error("StoreSignature: ", err)
+	}
 }
 
 type DeployContractHandler struct {

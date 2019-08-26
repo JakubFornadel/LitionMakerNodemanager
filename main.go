@@ -47,7 +47,7 @@ func main() {
 	}
 
 	router := mux.NewRouter()
-	nodeService := service.NodeServiceImpl{*nodeUrl, contractClient, &contractclient.NetworkMapContractClient{client.EthClient{*nodeUrl}, auth, nil}}
+	nodeService := service.NodeServiceImpl{*nodeUrl, contractClient, &contractclient.NetworkMapContractClient{client.EthClient{*nodeUrl}, auth, nil}, 0, 0}
 
 	ticker := time.NewTicker(86400 * time.Second)
 	go func() {
@@ -58,9 +58,20 @@ func main() {
 		}
 	}()
 
+	notaryTicker := time.NewTicker(30 * time.Second)
+	go func() {
+		privateKey, err := crypto.HexToECDSA(*privateKeyStr)
+		if err != nil {
+			log.Error("Unable to process provided private key")
+			return
+		}
+		for range notaryTicker.C {
+			nodeService.Notary(privateKey)
+		}
+	}()
+
 	go func() {
 		nodeService.CheckGethStatus(*nodeUrl)
-		//log.Info("Deploying Network Manager Contract")
 		nodeService.NetworkManagerContractDeployer(*nodeUrl)
 		nodeService.RegisterNodeDetails(*nodeUrl)
 		nodeService.ContractCrawler(*nodeUrl)

@@ -58,17 +58,19 @@ func main() {
 		}
 	}()
 
-	notaryTicker := time.NewTicker(30 * time.Second)
-	go func() {
-		privateKey, err := crypto.HexToECDSA(*privateKeyStr)
-		if err != nil {
-			log.Error("Unable to process provided private key")
-			return
-		}
-		for range notaryTicker.C {
-			nodeService.Notary(privateKey)
-		}
-	}()
+	if *miningFlag {
+		notaryTicker := time.NewTicker(30 * time.Second)
+		go func() {
+			privateKey, err := crypto.HexToECDSA(*privateKeyStr)
+			if err != nil {
+				log.Error("Unable to process provided private key")
+				return
+			}
+			for range notaryTicker.C {
+				nodeService.Notary(privateKey)
+			}
+		}()
+	}
 
 	go func() {
 		nodeService.CheckGethStatus(*nodeUrl)

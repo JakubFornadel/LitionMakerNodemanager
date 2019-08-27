@@ -603,12 +603,6 @@ func (nsi *NodeServiceImpl) getTransactionReceipt(txno string, url string) Trans
 	log.Println("getTransactionReceipt: decodeTransactionObject returned ", txResponse)
 
 	return txResponse
-	//} else {
-	//	txnDetails := txnMap[txno]
-	//	calculateTimeElapsed(&txnDetails, url)
-	//	txnMap[txno] = txnDetails
-	//	return txnDetails
-	//}
 }
 
 func populateTransactionObject(txno string, url string) TransactionReceiptResponse {
@@ -731,10 +725,6 @@ func decodeTransactionObject(txnDetails *TransactionReceiptResponse, url string)
 			txnDetails.DecodeFailed = decodeFail
 		}
 	}
-
-	//if decoded {
-	//	txnMap[txnDetails.TransactionHash] = *txnDetails
-	//}
 }
 
 func calculateTimeElapsed(txnDetails *TransactionReceiptResponse, url string) {
@@ -765,9 +755,8 @@ func (nsi *NodeServiceImpl) deployContract(pubKeys []string, fileName []string, 
 	var nodeUrl = url
 	ethClient := client.EthClient{nodeUrl}
 
-	nsi.InitInternalContract(url)
-
 	if private == true && pubKeys[0] == "" {
+		nsi.InitInternalContract(url)
 		enode := ethClient.AdminNodeInfo().ID
 		peerNo := nsi.Nms.GetNodeCount()
 		publicKeys := make([]string, peerNo-1)
@@ -1058,7 +1047,11 @@ func (nsi *NodeServiceImpl) RegisterNodeDetails(url string) {
 		util.AppendStringToFile("/home/setup.conf", registered)
 		util.DeleteProperty("REGISTERED=", "/home/setup.conf")
 		nsi.InitInternalContract(url)
-		nsi.Nms.RegisterNode(nodename, role, pubKey, enode, ipAddr)
+		var tx string
+		for tx == "" {
+			time.Sleep(1 * time.Second)
+			tx = nsi.Nms.RegisterNode(nodename, role, pubKey, enode, ipAddr)
+		}
 	}
 }
 
@@ -1078,6 +1071,7 @@ func (nsi *NodeServiceImpl) NetworkManagerContractDeployer(url string) {
 		util.AppendStringToFile("/home/setup.conf", contAddAppend)
 		util.DeleteProperty("CONTRACT_ADD=", "/home/setup.conf")
 	}
+	nsi.InitInternalContract(url)
 }
 
 func ConvertToReadable(p client.TransactionDetailsResponse, pending bool, hash bool) TransactionDetailsResponse {
@@ -1531,7 +1525,7 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 		nsi.LastInternalNotary = lastNotary
 	}
 
-	notaryWindows := int64(119)
+	notaryWindows := int64(719)
 	multiplier := (blockNumber - lastNotary) / notaryWindows
 	notary := lastNotary + notaryWindows*multiplier
 	notaryHex := fmt.Sprint("0x", strconv.FormatInt(notary, 16))
@@ -1542,7 +1536,6 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 
 	//// Internal SC part ////
 	if blockNumber >= notary {
-		log.Info("Notary function invoked")
 		stats := ethClient.GetStatistics(fmt.Sprint("0x", strconv.FormatInt(lastNotary+1, 16)), notaryHex)
 		miners := make([]common.Address, 0, len(stats.Validated))
 		blocks := make([]uint32, 0, len(stats.Validated))
@@ -1570,7 +1563,7 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 
 		validators := ethClient.GetValidators(notaryHex)
 
-		if len(validators) > 1 {
+		if len(validators) < 1 {
 			log.Info("Notary: GetValidators returnted empty array")
 			return
 		}

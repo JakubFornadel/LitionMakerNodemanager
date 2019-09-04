@@ -68,8 +68,7 @@ contract NetworkManagerContract {
                                   uint32[] memory blocks_mined, address[] memory users,
                                   uint32[] memory user_gas, uint32 largest_tx)
                                       public pure returns (bytes32) {
-       bytes32 notary_hash = keccak256(abi.encodePacked(notary_block, miners, blocks_mined, users, user_gas, largest_tx));
-       return notary_hash;
+       return keccak256(abi.encodePacked(notary_block, miners, blocks_mined, users, user_gas, largest_tx));
     }
 
     struct signatures {

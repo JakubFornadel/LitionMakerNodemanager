@@ -1569,9 +1569,13 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 		}
 		//// External SC part ////
 		if validators[int(notary)%len(validators)] == crypto.PubkeyToAddress(privateKey.PublicKey) {
-			nodeCount := len(validators)
+			nodeRequired := len(validators)
+			// if there is less or same number of nodes required by BFT (4), then you need all signatures
+			if nodeRequired > 4 {
+				nodeRequired = 2/3*nodeRequired + 1
+			}
 			sigCount := nsi.Nms.GetSignaturesCount(notary)
-			if ((sigCount >= 2/3*nodeCount+1) || (sigCount == nodeCount)) && nsi.LastMainetNotary != notary {
+			if (sigCount == nodeRequired) && nsi.LastMainetNotary != notary {
 				v := make([]uint8, 0, sigCount)
 				s := make([][32]byte, 0, sigCount)
 				r := make([][32]byte, 0, sigCount)
@@ -1581,11 +1585,13 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 					s = append(s, sig.S)
 					r = append(r, sig.R)
 				}
-				log.Info("Notary: sending ...")
+				// log.Info("Notary: sending ...")
 				nsi.LastMainetNotary = notary
-				err := nsi.LitionContractClient.Notary(bind.NewKeyedTransactor(privateKey), uint32(notary), miners, blocks, users, gas, stats.MaxGas, v, r, s)
+				err := nsi.LitionContractClient.Notary(bind.NewKeyedTransactor(privateKey), notary, miners, blocks, users, gas, stats.MaxGas, v, r, s)
 				if err != nil {
 					log.Info("Notary: ", err)
+					//reset notary in case of error (maybe not enough staking)
+					nsi.LastMainetNotary, _ = nsi.LitionContractClient.GetLastNotary()
 				}
 			}
 		}

@@ -1575,7 +1575,7 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 				nodeRequired = 2/3*nodeRequired + 1
 			}
 			sigCount := nsi.Nms.GetSignaturesCount(notary)
-			if (sigCount == nodeRequired) && nsi.LastMainetNotary != notary {
+			if (sigCount >= nodeRequired) && nsi.LastMainetNotary != notary {
 				v := make([]uint8, 0, sigCount)
 				s := make([][32]byte, 0, sigCount)
 				r := make([][32]byte, 0, sigCount)

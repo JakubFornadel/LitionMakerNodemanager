@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math/big"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -1512,12 +1513,20 @@ func byte32(s []byte) (a *[32]byte) {
 }
 
 func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
-	ethClient := client.EthClient{nsi.Url}
-	blockNumber := util.HexStringtoInt64(ethClient.BlockNumber())
-	lastNotary, err := nsi.LitionContractClient.GetLastNotary()
-
+	lastNotaryBlock, _, err := nsi.LitionContractClient.GetLastNotary()
 	if err != nil {
 		log.Error("Notary: ", err)
+		return
+	}
+	lastNotary := lastNotaryBlock.Int64()
+
+	ethClient := client.EthClient{nsi.Url}
+	blockNumber := util.HexStringtoInt64(ethClient.BlockNumber())
+	notaryWindows := int64(719)
+	multiplier := (blockNumber - lastNotary) / notaryWindows
+
+	notaryBlock := lastNotary + notaryWindows*multiplier
+	if nsi.LastMainetNotary >= notaryBlock {
 		return
 	}
 
@@ -1525,17 +1534,13 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 		nsi.LastInternalNotary = lastNotary
 	}
 
-	notaryWindows := int64(719)
-	multiplier := (blockNumber - lastNotary) / notaryWindows
-	notary := lastNotary + notaryWindows*multiplier
-	notaryHex := fmt.Sprint("0x", strconv.FormatInt(notary, 16))
-
-	if nsi.LastMainetNotary >= notary {
-		return
-	}
+	notaryHex := fmt.Sprint("0x", strconv.FormatInt(notaryBlock, 16))
+	notaryStart := lastNotaryBlock
+	notaryEnd := new(big.Int).SetInt64(notaryWindows * multiplier)
+	notaryEnd.Add(notaryEnd, notaryStart)
 
 	//// Internal SC part ////
-	if blockNumber >= notary {
+	if blockNumber >= notaryBlock {
 		stats := ethClient.GetStatistics(fmt.Sprint("0x", strconv.FormatInt(lastNotary+1, 16)), notaryHex)
 		miners := make([]common.Address, 0, len(stats.Validated))
 		blocks := make([]uint32, 0, len(stats.Validated))
@@ -1549,16 +1554,16 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 			users = append(users, k)
 			gas = append(gas, stats.GasUsed[k])
 		}
-		if nsi.LastInternalNotary < notary {
-			hashToSign := nsi.Nms.GetSignatureHashFromNotary(notary, miners, blocks, users, gas, stats.MaxGas)
+		if nsi.LastInternalNotary < notaryBlock {
+			hashToSign := nsi.Nms.GetSignatureHashFromNotary(notaryBlock, miners, blocks, users, gas, stats.MaxGas)
 			signature, err := crypto.Sign(hashToSign, privateKey)
 			if err != nil {
 				log.Info("Notary: ", err)
 				return
 			}
 
-			nsi.Nms.StoreSignature(notary, contractclient.Signature{uint8(int(signature[64])) + 27, *byte32(signature[:32]), *byte32(signature[32:64])})
-			nsi.LastInternalNotary = notary
+			nsi.Nms.StoreSignature(notaryBlock, contractclient.Signature{uint8(int(signature[64])) + 27, *byte32(signature[:32]), *byte32(signature[32:64])})
+			nsi.LastInternalNotary = notaryBlock
 		}
 
 		validators := ethClient.GetValidators(notaryHex)
@@ -1568,30 +1573,30 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 			return
 		}
 		//// External SC part ////
-		if validators[int(notary)%len(validators)] == crypto.PubkeyToAddress(privateKey.PublicKey) {
+		if validators[int(notaryBlock)%len(validators)] == crypto.PubkeyToAddress(privateKey.PublicKey) {
 			nodeRequired := len(validators)
 			// if there is less or same number of nodes required by BFT (4), then you need all signatures
 			if nodeRequired > 4 {
 				nodeRequired = 2/3*nodeRequired + 1
 			}
-			sigCount := nsi.Nms.GetSignaturesCount(notary)
-			if (sigCount >= nodeRequired) && nsi.LastMainetNotary != notary {
+			sigCount := nsi.Nms.GetSignaturesCount(notaryBlock)
+			if (sigCount >= nodeRequired) && nsi.LastMainetNotary != notaryBlock {
 				v := make([]uint8, 0, sigCount)
 				s := make([][32]byte, 0, sigCount)
 				r := make([][32]byte, 0, sigCount)
 				for i := 0; i < sigCount; i++ {
-					sig := nsi.Nms.GetSignatures(notary, i)
+					sig := nsi.Nms.GetSignatures(notaryBlock, i)
 					v = append(v, sig.V)
 					s = append(s, sig.S)
 					r = append(r, sig.R)
 				}
 				// log.Info("Notary: sending ...")
-				nsi.LastMainetNotary = notary
-				err := nsi.LitionContractClient.Notary(bind.NewKeyedTransactor(privateKey), notary, miners, blocks, users, gas, stats.MaxGas, v, r, s)
+				nsi.LastMainetNotary = notaryBlock
+				err := nsi.LitionContractClient.Notary(bind.NewKeyedTransactor(privateKey), notaryStart, notaryEnd, miners, blocks, users, gas, stats.MaxGas, v, r, s)
 				if err != nil {
 					log.Info("Notary: ", err)
 					//reset notary in case of error (maybe not enough staking)
-					nsi.LastMainetNotary, _ = nsi.LitionContractClient.GetLastNotary()
+					nsi.LastMainetNotary = lastNotary
 				}
 			}
 		}

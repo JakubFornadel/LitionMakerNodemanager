@@ -1516,18 +1516,19 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 	ethClient := client.EthClient{nsi.Url}
 	blockNumber := util.HexStringtoInt64(ethClient.BlockNumber())
 	lastNotaryBlockSc, _, err := nsi.LitionContractClient.GetLastNotary()
-	lastNotary := lastNotaryBlockSc.Int64()
 
 	if err != nil {
 		log.Error("Notary: ", err)
 		return
 	}
 
+	lastNotary := lastNotaryBlockSc.Int64()
+
 	if nsi.LastInternalNotary < lastNotary {
 		nsi.LastInternalNotary = lastNotary
 	}
 
-	notaryWindows := int64(719)
+	notaryWindows := int64(119)
 	multiplier := (blockNumber - lastNotary) / notaryWindows
 	notary := lastNotary + notaryWindows*multiplier
 	notaryHex := fmt.Sprint("0x", strconv.FormatInt(notary, 16))

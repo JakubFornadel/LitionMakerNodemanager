@@ -80,8 +80,7 @@ func main() {
 			go func() {
 				privateKey, err := crypto.HexToECDSA(*privateKeyStr)
 				if err != nil {
-					log.Error("Unable to process provided private key")
-					return
+					log.Fatal("Unable to process provided private key")
 				}
 				for range notaryTicker.C {
 					nodeService.Notary(privateKey)

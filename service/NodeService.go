@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math/big"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -1514,7 +1515,8 @@ func byte32(s []byte) (a *[32]byte) {
 func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 	ethClient := client.EthClient{nsi.Url}
 	blockNumber := util.HexStringtoInt64(ethClient.BlockNumber())
-	lastNotary, err := nsi.LitionContractClient.GetLastNotary()
+	lastNotaryBlockSc, _, err := nsi.LitionContractClient.GetLastNotary()
+	lastNotary := lastNotaryBlockSc.Int64()
 
 	if err != nil {
 		log.Error("Notary: ", err)
@@ -1587,11 +1589,12 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 				}
 				// log.Info("Notary: sending ...")
 				nsi.LastMainetNotary = notary
-				err := nsi.LitionContractClient.Notary(bind.NewKeyedTransactor(privateKey), notary, miners, blocks, users, gas, stats.MaxGas, v, r, s)
+				err := nsi.LitionContractClient.Notary(bind.NewKeyedTransactor(privateKey), new(big.Int).SetInt64(lastNotary), new(big.Int).SetInt64(notary),
+					miners, blocks, users, gas, stats.MaxGas, v, r, s)
 				if err != nil {
 					log.Info("Notary: ", err)
 					//reset notary in case of error (maybe not enough staking)
-					nsi.LastMainetNotary, _ = nsi.LitionContractClient.GetLastNotary()
+					nsi.LastMainetNotary = lastNotary
 				}
 			}
 		}

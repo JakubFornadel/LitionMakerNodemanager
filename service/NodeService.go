@@ -1515,8 +1515,8 @@ func byte32(s []byte) (a *[32]byte) {
 func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 	ethClient := client.EthClient{nsi.Url}
 	blockNumber := util.HexStringtoInt64(ethClient.BlockNumber())
-	lastNotarySc, _, err := nsi.LitionContractClient.GetLastNotary()
-	lastNotary := lastNotarySc.Int64()
+	lastNotaryBlockSc, _, err := nsi.LitionContractClient.GetLastNotary()
+	lastNotary := lastNotaryBlockSc.Int64()
 
 	if err != nil {
 		log.Error("Notary: ", err)

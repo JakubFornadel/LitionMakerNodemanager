@@ -1488,14 +1488,14 @@ func (nsi *NodeServiceImpl) InitInternalContract(url string) {
 
 // This wrapper is used in event listener for automatic voting
 func (nsi *NodeServiceImpl) VoteValidator(event *litionScClient.LitionScClientStartMining) {
-	validatorAddress := event.Miner.String()
+	validatorAddress := event.Account.String()
 	log.Info("Aut. VoteValidator function invoked. Validator: ", validatorAddress)
 	nsi.proposeValidator(nsi.Url, validatorAddress, true)
 }
 
 // This wrapper is used in event listener for automatic unvoting
 func (nsi *NodeServiceImpl) UnvoteValidator(event *litionScClient.LitionScClientStopMining) {
-	validatorAddress := event.Miner.String()
+	validatorAddress := event.Account.String()
 	log.Info("Aut. UnvoteValidator function invoked. Validator: ", validatorAddress)
 	nsi.proposeValidator(nsi.Url, validatorAddress, false)
 }
@@ -1515,14 +1515,14 @@ func byte32(s []byte) (a *[32]byte) {
 func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 	ethClient := client.EthClient{nsi.Url}
 	blockNumber := util.HexStringtoInt64(ethClient.BlockNumber())
-	lastNotaryBlockSc, _, err := nsi.LitionContractClient.GetLastNotary()
+	lastNotarySc, err := nsi.LitionContractClient.GetLastNotary()
 
 	if err != nil {
 		log.Error("Notary: ", err)
 		return
 	}
 
-	lastNotary := lastNotaryBlockSc.Int64()
+	lastNotary := lastNotarySc.NotaryBlock.Int64()
 
 	if nsi.LastInternalNotary < lastNotary {
 		nsi.LastInternalNotary = lastNotary

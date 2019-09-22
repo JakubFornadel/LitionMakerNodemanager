@@ -1590,7 +1590,7 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 				}
 				// log.Info("Notary: sending ...")
 				nsi.LastMainetNotary = notary
-				err := nsi.LitionContractClient.Notary(bind.NewKeyedTransactor(privateKey), new(big.Int).SetInt64(lastNotary), new(big.Int).SetInt64(notary),
+				err := nsi.LitionContractClient.Notary(bind.NewKeyedTransactor(privateKey), new(big.Int).SetInt64(lastNotary+1), new(big.Int).SetInt64(notary),
 					miners, blocks, users, gas, stats.MaxGas, v, r, s)
 				if err != nil {
 					log.Info("Notary: ", err)

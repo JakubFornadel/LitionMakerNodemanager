@@ -91,7 +91,7 @@ func (nsi *NodeServiceImpl) GetNmcAddress(w http.ResponseWriter, r *http.Request
 	}
 
 	w.WriteHeader(http.StatusForbidden)
-	w.Write([]byte("Permissoon denied"))
+	w.Write([]byte("Permission denied"))
 }
 
 func (nsi *NodeServiceImpl) GetGenesisHandler(w http.ResponseWriter, r *http.Request) {

@@ -197,8 +197,8 @@ func InitLitionContractClient(
 	log.Info("Initialize Lition Contract Client")
 	err = nil
 
-	if miningFlag == true && privateKeyStr == "" {
-		err = errors.New("NodeManager misconfiguration. When miningFlag == true, also private key must be provided")
+	if privateKeyStr == "" {
+		err = errors.New("NodeManager misconfiguration. Private key must be provided")
 		return
 	}
 
@@ -220,16 +220,16 @@ func InitLitionContractClient(
 			log.Error("Unable to init 'StopMining' event listeners")
 			return
 		}
-
-		var privateKey *ecdsa.PrivateKey
-		privateKey, err = crypto.HexToECDSA(privateKeyStr)
-		if err != nil {
-			log.Error("Unable to process provided private key")
-			return
-		}
-		pubKey = crypto.PubkeyToAddress(privateKey.PublicKey).String()
-		auth = bind.NewKeyedTransactor(privateKey)
 	}
+
+	var privateKey *ecdsa.PrivateKey
+	privateKey, err = crypto.HexToECDSA(privateKeyStr)
+	if err != nil {
+		log.Error("Unable to process provided private key")
+		return
+	}
+	pubKey = crypto.PubkeyToAddress(privateKey.PublicKey).String()
+	auth = bind.NewKeyedTransactor(privateKey)
 
 	return
 }

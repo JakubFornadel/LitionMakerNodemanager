@@ -100,7 +100,8 @@ func main() {
 						"You can check status of the StartMining transaction here:\n" + ethScanURL + "\n\n" +
 						"In case it takes too long and you need to speed up things, you can manually call StartMining method with " +
 						"higher gas price through our SideChain Manager here:\n https://lition.io/sidechainmanager\n\n" +
-						"Do not shut down this process in the meantime.\n\n"
+						"Do not shut down this process in the meantime.\n\n" +
+						"*****************************************************************************\n\n"
 				fmt.Printf(terminalMsg)
 
 				// Wait for StartMining to be processed so user can register his node without being rejected by nodes

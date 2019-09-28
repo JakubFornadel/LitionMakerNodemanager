@@ -41,13 +41,13 @@ func main() {
 
 	listenPortStr := ":" + strconv.Itoa(*listenPort)
 	// Init Lition contract client
-	contractClient, auth, err := InitLitionContractClient(*infuraURL, *contractAddress, *chainID, *privateKeyStr, *miningFlag)
+	contractClient, auth, pubKey, err := InitLitionContractClient(*infuraURL, *contractAddress, *chainID, *privateKeyStr, *miningFlag)
 	if err != nil {
 		log.Fatal("Lition contract client initialization failed. Err: ", err)
 	}
 
 	router := mux.NewRouter()
-	nodeService := service.NodeServiceImpl{*nodeUrl, contractClient, &contractclient.NetworkMapContractClient{client.EthClient{*nodeUrl}, auth, nil}, 0, 0}
+	nodeService := service.NodeServiceImpl{*nodeUrl, contractClient, pubKey, nil, true, &contractclient.NetworkMapContractClient{client.EthClient{*nodeUrl}, auth, nil}, 0, 0}
 
 	ticker := time.NewTicker(86400 * time.Second)
 	go func() {
@@ -60,16 +60,52 @@ func main() {
 
 	go func() {
 		nodeService.CheckGethStatus(*nodeUrl)
+		log.Info("Geth is running")
+
+		if *miningFlag == true {
+			// Start standalone event listeners
+			go contractClient.Start_accMiningEventListener(nodeService.ProposeValidator)
+
+			isActiveValidator, err := contractClient.IsActiveValidator(pubKey)
+			if err != nil {
+				log.Fatal("Unable to call IsActiveValidator on SC. Err: ", err)
+			}
+
+			if isActiveValidator == false {
+
+				// Let lition SC know that this node wants to start mining
+				tx, err := contractClient.StartMining(auth)
+				if err != nil {
+					log.Fatal("Unable to start mining. Err: ", err)
+				}
+				log.Info("'StartMining' tx sent")
+
+				nodeService.MiningRegistered = false
+				nodeService.MiningRegisteredChan = make(chan struct{})
+
+				// Wait for StartMining to be processed so user can register his node without being rejected by nodes
+				// Validators can send free tx only once per 5 seconds and they must be registered in SC as active validators
+				log.Info("****************************************************************************")
+				log.Info("**** Waiting for StartMing to be registered in Lition Smart Contract... ****")
+				log.Info("****************************************************************************")
+
+				log.Info("It might take from few seconds to few hours(edge case when ethereum network is halted)")
+				log.Info("If you are running node on testnet, check status of the tx here: https://ropsten.etherscan.io/tx/0x", tx.Hash().String())
+				log.Info("If you are running node on mainnet, check status of the tx here: https://etherscan.io/tx/0x", tx.Hash().String())
+
+				<-nodeService.MiningRegisteredChan
+
+				// Wait a few seconds so nodes register this account as active validator and do not reject it's internal SC transactions
+				time.Sleep(10 * time.Second)
+			}
+		}
+
 		nodeService.NetworkManagerContractDeployer(*nodeUrl)
 		nodeService.RegisterNodeDetails(*nodeUrl)
 		nodeService.ContractCrawler(*nodeUrl)
 		nodeService.ABICrawler(*nodeUrl)
 
-		// Let lition SC know that this node wants to start mining
 		if *miningFlag == true {
-			// Start standalone event listeners
-			go contractClient.Start_accMiningEventListener(nodeService.ProposeValidator)
-
 			notaryTicker := time.NewTicker(30 * time.Second)
 			go func() {
 				privateKey, err := crypto.HexToECDSA(*privateKeyStr)
@@ -137,6 +173,21 @@ func main() {
 	// Block until we receive our signal.
 	<-c
 
+	if *miningFlag == true {
+		isActiveValidator, err := contractClient.IsActiveValidator(pubKey)
+		if err != nil {
+			log.Error("Unable to call IsActiveValidator on SC during shutdown. Unvote validator as he was active. Err: ", err)
+			isActiveValidator = true
+		}
+
+		if isActiveValidator == true {
+			// Stop mining
+			contractClient.StopMining(auth)
+			// Unvote itself
+			nodeService.UnvoteValidatorInternal(pubKey)
+		}
+	}
+
 	// Deinit lition smart contract cliet
 	contractClient.DeInit()
 
@@ -178,7 +229,7 @@ func InitLitionContractClient(
 	contractAddress string,
 	chainID int,
 	privateKeyStr string,
-	miningFlag bool) (client *litionScClient.ContractClient, auth *bind.TransactOpts, err error) {
+	miningFlag bool) (client *litionScClient.ContractClient, auth *bind.TransactOpts, pubKey string, err error) {
 
 	log.Info("Initialize Lition Contract Client")
 	err = nil
@@ -209,6 +260,7 @@ func InitLitionContractClient(
 		log.Error("Unable to process provided private key")
 		return
 	}
+	pubKey = crypto.PubkeyToAddress(privateKey.PublicKey).String()
 	auth = bind.NewKeyedTransactor(privateKey)
 
 	return

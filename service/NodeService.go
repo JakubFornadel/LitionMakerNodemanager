@@ -230,6 +230,9 @@ type LatencyResponse struct {
 type NodeServiceImpl struct {
 	Url                  string
 	LitionContractClient *litionScClient.ContractClient
+	NodeAccAddress       string
+	MiningRegisteredChan chan struct{}
+	MiningRegistered     bool
 	Nms                  *contractclient.NetworkMapContractClient
 	LastInternalNotary   int64
 	LastMainetNotary     int64
@@ -1476,6 +1479,16 @@ func (nsi *NodeServiceImpl) ProposeValidator(event *litionScClient.LitionScClien
 	voteFlag := event.Mining
 	log.Info("Aut. ProposeValidator function invoked. Validator: ", validatorAddress, ", vote flag: ", voteFlag)
 	nsi.ethProposeValidator(nsi.Url, validatorAddress, voteFlag)
+
+	if validatorAddress == nsi.NodeAccAddress && nsi.MiningRegistered == false {
+		close(nsi.MiningRegisteredChan)
+		nsi.MiningRegistered = true
+	}
+}
+
+func (nsi *NodeServiceImpl) UnvoteValidatorInternal(validatorAddress string) {
+	log.Info("UnvoteValidator(itself) function invoked. Validator: ", validatorAddress)
+	nsi.ethProposeValidator(nsi.Url, validatorAddress, false)
 }
 
 func byte32(s []byte) (a *[32]byte) {
@@ -1561,11 +1574,15 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 					s = append(s, sig.S)
 					r = append(r, sig.R)
 				}
-				// log.Info("Notary: sending ...")
+
 				nsi.LastMainetNotary = notary
-				err := nsi.LitionContractClient.Notary(bind.NewKeyedTransactor(privateKey), new(big.Int).SetInt64(lastNotary+1), new(big.Int).SetInt64(notary),
+
+				log.Info("Notary: sending ...")
+				tx, err := nsi.LitionContractClient.Notary(bind.NewKeyedTransactor(privateKey), new(big.Int).SetInt64(lastNotary+1), new(big.Int).SetInt64(notary),
 					miners, blocks, users, gas, stats.MaxGas, v, r, s)
-				if err != nil {
+				if err == nil {
+					log.Info("Notary TX Hash: ", tx.Hash().String())
+				} else {
 					log.Info("Notary: ", err)
 					//reset notary in case of error (maybe not enough staking)
 					nsi.LastMainetNotary = lastNotary

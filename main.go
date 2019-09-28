@@ -96,10 +96,10 @@ func main() {
 						"**** Waiting for StartMinig to be registered in Lition Smart Contract... ****\n" +
 						"*****************************************************************************\n\n" +
 
-						"It might take from few seconds to few hours(edge case when ethereum network is halted)\n" +
-						"You can check status of the StartMining transaction here: " + ethScanURL + "\n\n" +
-						"In case it takes too long and you need to speed up things, you can manually call StartMining method with\n" +
-						"higher gas price through our SideChain Manager here: https://lition.io/sidechainmanager\n" +
+						"It might take from few seconds to few hours(edge case when ethereum network is halted). " +
+						"You can check status of the StartMining transaction here:\n" + ethScanURL + "\n\n" +
+						"In case it takes too long and you need to speed up things, you can manually call StartMining method with " +
+						"higher gas price through our SideChain Manager here:\n https://lition.io/sidechainmanager\n\n" +
 						"Do not shut down this process in the meantime.\n\n"
 				fmt.Printf(terminalMsg)
 

@@ -1529,13 +1529,13 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 
 		// No transactions present, do no call notary
 		if len(stats.GasUsed) == 0 {
-			log.Warn("Notary: GasUsed from node statistics empty")
+			log.Info("Notary not sent, GasUsed from node statistics is empty - there are no transactions present")
 			return
 		}
 
 		// Invalid max gas provided
 		if stats.MaxGas == 0 {
-			log.Warn("Notary: MaxGas from node statistics == 0")
+			log.Info("Notary not sent, MaxGas from node statistics == 0 - there are no transactions present")
 			return
 		}
 
@@ -1566,7 +1566,7 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 		validators := ethClient.GetValidators(notaryHex)
 
 		if len(validators) < 1 {
-			log.Warn("Notary: GetValidators returnted empty array")
+			log.Warn("Notary not sent, there are no validators on node level")
 			return
 		}
 		//// External SC part ////
@@ -1590,11 +1590,11 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 
 				nsi.LastMainetNotary = notary
 
-				log.Info("Notary: sending ...")
+				log.Info("Notary: sending..., Data:")
 				sentData := "StartBlock: " + strconv.FormatInt(lastNotary+1, 10) + ", EndBlock: " + strconv.FormatInt(notary, 10) + "\n" +
 					"LargestTx: " + strconv.FormatInt(int64(stats.MaxGas), 10) + "SignaturesCount: " + strconv.Itoa(len(v)) + "\n" +
 					"MinersCount: " + strconv.Itoa(len(miners)) + "BlocksCount: " + strconv.Itoa(len(blocks)) + "\n" +
-					"UsersCount: " + strconv.Itoa(len(users)) + "GasCount: " + strconv.Itoa(len(gas)) + "\n"
+					"UsersCount: " + strconv.Itoa(len(users)) + "GasCount: " + strconv.Itoa(len(gas)) + "\n\n"
 				fmt.Printf(sentData)
 
 				tx, err := nsi.LitionContractClient.Notary(bind.NewKeyedTransactor(privateKey), new(big.Int).SetInt64(lastNotary+1), new(big.Int).SetInt64(notary),

@@ -195,9 +195,14 @@ func main() {
 
 		if isActiveValidator == true {
 			// Stop mining
-			contractClient.StopMining(auth)
+			tx, err := contractClient.StopMining(auth)
+			if err != nil {
+				log.Fatal("Unable to stop mining. Err: ", err)
+			}
+			log.Info("StoptMining tx sent. Hash: ", tx.Hash().String())
+
 			// Unvote itself
-			nodeService.UnvoteValidatorInternal(pubKey)
+			//nodeService.UnvoteValidatorInternal(pubKey)
 		}
 	}
 

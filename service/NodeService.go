@@ -1526,6 +1526,19 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 	//// Internal SC part ////
 	if blockNumber >= notary {
 		stats := ethClient.GetStatistics(fmt.Sprint("0x", strconv.FormatInt(lastNotary+1, 16)), notaryHex)
+
+		// No transactions present, do no call notary
+		if len(stats.GasUsed) == 0 {
+			log.Warn("Notary: GasUsed from node statistics empty")
+			return
+		}
+
+		// Invalid max gas provided
+		if stats.MaxGas == 0 {
+			log.Warn("Notary: MaxGas from node statistics == 0")
+			return
+		}
+
 		miners := make([]common.Address, 0, len(stats.Validated))
 		blocks := make([]uint32, 0, len(stats.Validated))
 		for k := range stats.Validated {
@@ -1542,7 +1555,7 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 			hashToSign := nsi.Nms.GetSignatureHashFromNotary(notary, miners, blocks, users, gas, stats.MaxGas)
 			signature, err := crypto.Sign(hashToSign, privateKey)
 			if err != nil {
-				log.Info("Notary: ", err)
+				log.Error("Notary GetSignatureHashFromNotary err: ", err)
 				return
 			}
 
@@ -1553,7 +1566,7 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 		validators := ethClient.GetValidators(notaryHex)
 
 		if len(validators) < 1 {
-			log.Info("Notary: GetValidators returnted empty array")
+			log.Warn("Notary: GetValidators returnted empty array")
 			return
 		}
 		//// External SC part ////
@@ -1578,12 +1591,19 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 				nsi.LastMainetNotary = notary
 
 				log.Info("Notary: sending ...")
+				sentData := "StartBlock: " + strconv.FormatInt(lastNotary+1, 10) + ", EndBlock: " + strconv.FormatInt(notary, 10) + "\n" +
+					"LargestTx: " + strconv.FormatInt(int64(stats.MaxGas), 10) + "SignaturesCount: " + strconv.Itoa(len(v)) + "\n" +
+					"MinersCount: " + strconv.Itoa(len(miners)) + "BlocksCount: " + strconv.Itoa(len(blocks)) + "\n" +
+					"UsersCount: " + strconv.Itoa(len(users)) + "GasCount: " + strconv.Itoa(len(gas)) + "\n"
+				fmt.Printf(sentData)
+
 				tx, err := nsi.LitionContractClient.Notary(bind.NewKeyedTransactor(privateKey), new(big.Int).SetInt64(lastNotary+1), new(big.Int).SetInt64(notary),
 					miners, blocks, users, gas, stats.MaxGas, v, r, s)
 				if err == nil {
-					log.Info("Notary TX Hash: ", tx.Hash().String())
+					log.Info("Notary Success, tx Hash: ", tx.Hash().String())
 				} else {
-					log.Info("Notary: ", err)
+					log.Error("Notary failed: ", err)
+
 					//reset notary in case of error (maybe not enough staking)
 					nsi.LastMainetNotary = lastNotary
 				}

@@ -41,7 +41,7 @@ func main() {
 
 	listenPortStr := ":" + strconv.Itoa(*listenPort)
 	// Init Lition contract client
-	contractClient, auth, pubKey, err := InitLitionContractClient(*infuraURL, *contractAddress, *chainID, *privateKeyStr, *miningFlag)
+	contractClient, auth, err := InitLitionContractClient(*infuraURL, *contractAddress, *chainID, *privateKeyStr, *miningFlag)
 	if err != nil {
 		log.Fatal("Lition contract client initialization failed. Err: ", err)
 	}
@@ -69,11 +69,6 @@ func main() {
 		if *miningFlag == true {
 			// Start standalone event listeners
 			go contractClient.Start_accMiningEventListener(nodeService.ProposeValidator)
-
-			err := contractClient.StartMining(auth)
-			if err != nil {
-				log.Fatal("Unable to start mining. Err: ", err)
-			}
 
 			notaryTicker := time.NewTicker(30 * time.Second)
 			go func() {
@@ -142,13 +137,6 @@ func main() {
 	// Block until we receive our signal.
 	<-c
 
-	if *miningFlag == true {
-		// Stop mining
-		contractClient.StopMining(auth)
-		// Unvote itself
-		nodeService.UnvoteValidatorInternal(pubKey)
-	}
-
 	// Deinit lition smart contract cliet
 	contractClient.DeInit()
 
@@ -190,7 +178,7 @@ func InitLitionContractClient(
 	contractAddress string,
 	chainID int,
 	privateKeyStr string,
-	miningFlag bool) (client *litionScClient.ContractClient, auth *bind.TransactOpts, pubKey string, err error) {
+	miningFlag bool) (client *litionScClient.ContractClient, auth *bind.TransactOpts, err error) {
 
 	log.Info("Initialize Lition Contract Client")
 	err = nil
@@ -221,7 +209,6 @@ func InitLitionContractClient(
 		log.Error("Unable to process provided private key")
 		return
 	}
-	pubKey = crypto.PubkeyToAddress(privateKey.PublicKey).String()
 	auth = bind.NewKeyedTransactor(privateKey)
 
 	return

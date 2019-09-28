@@ -1478,11 +1478,6 @@ func (nsi *NodeServiceImpl) ProposeValidator(event *litionScClient.LitionScClien
 	nsi.ethProposeValidator(nsi.Url, validatorAddress, voteFlag)
 }
 
-func (nsi *NodeServiceImpl) UnvoteValidatorInternal(validatorAddress string) {
-	log.Info("UnvoteValidator(itself) function invoked. Validator: ", validatorAddress)
-	nsi.ethProposeValidator(nsi.Url, validatorAddress, false)
-}
-
 func byte32(s []byte) (a *[32]byte) {
 	if len(a) <= len(s) {
 		a = (*[len(a)]byte)(unsafe.Pointer(&s[0]))

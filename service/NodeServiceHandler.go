@@ -49,18 +49,6 @@ var pendCount = 0
 var nameMap = map[string]string{}
 var channelMap = make(map[string](chan string))
 
-func (nsi *NodeServiceImpl) ProposeValidator(w http.ResponseWriter, r *http.Request) {
-	var request ProposeValidatorRequest
-	_ = json.NewDecoder(r.Body).Decode(&request)
-
-	// TODO: check input parameters
-	//w.WriteHeader(http.BadRequest)
-	//w.Write([]byte("Invalid call arguments"))
-
-	response := nsi.proposeValidator(nsi.Url, request.ValidatorAddress, request.Vote)
-	json.NewEncoder(w).Encode(response)
-}
-
 func (nsi *NodeServiceImpl) GetNmcAddress(w http.ResponseWriter, r *http.Request) {
 	var request JoinNetworkRequest
 	_ = json.NewDecoder(r.Body).Decode(&request)
@@ -68,17 +56,17 @@ func (nsi *NodeServiceImpl) GetNmcAddress(w http.ResponseWriter, r *http.Request
 
 	var err error
 	var hasVested, hasDeposited bool
-	hasDeposited, err = nsi.LitionContractClient.AccHasDeposited(accAddress)
+	hasDeposited, err = nsi.LitionContractClient.IsAllowedToTransact(accAddress)
 	if err != nil {
-		log.Error("GetNmcAddress AccHasDeposited err: ", err)
+		log.Error("GetNmcAddress IsAllowedToTransact err: ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Internal error"))
 	}
 
 	if hasDeposited == false {
-		hasVested, err = nsi.LitionContractClient.AccHasVested(accAddress)
+		hasVested, err = nsi.LitionContractClient.IsAllowedToValidate(accAddress)
 		if err != nil {
-			log.Error("GetNmcAddress AccHasVested err: ", err)
+			log.Error("GetNmcAddress IsAllowedToValidate err: ", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("Internal error"))
 		}
@@ -107,9 +95,9 @@ func (nsi *NodeServiceImpl) GetGenesisHandler(w http.ResponseWriter, r *http.Req
 	log.Info(fmt.Sprint("Join request received from node: ", nodename, " with IP: ", foreignIP, ", enode: ", enode, ", accPubKey: ", accPubKey, " and chainID: ", chainID))
 
 	if role == "validator" {
-		hasVested, err := nsi.LitionContractClient.AccHasVested(accPubKey)
+		hasVested, err := nsi.LitionContractClient.IsAllowedToValidate(accPubKey)
 		if err != nil {
-			log.Error("GetGenesisHandler AccHasVested err: ", err)
+			log.Error("GetGenesisHandler IsAllowedToValidate err: ", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("Internal error"))
 			return
@@ -122,9 +110,9 @@ func (nsi *NodeServiceImpl) GetGenesisHandler(w http.ResponseWriter, r *http.Req
 			return
 		}
 	} else if role == "non-validator" {
-		hasDeposited, err := nsi.LitionContractClient.AccHasDeposited(accPubKey)
+		hasDeposited, err := nsi.LitionContractClient.IsAllowedToTransact(accPubKey)
 		if err != nil {
-			log.Error("GetGenesisHandler AccHasDeposited err: ", err)
+			log.Error("GetGenesisHandler IsAllowedToTransact err: ", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("Internal error"))
 			return

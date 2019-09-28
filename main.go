@@ -68,8 +68,7 @@ func main() {
 		// Let lition SC know that this node wants to start mining
 		if *miningFlag == true {
 			// Start standalone event listeners
-			go contractClient.Start_StartMiningEventListener(nodeService.VoteValidator)
-			go contractClient.Start_StopMiningEventListener(nodeService.UnvoteValidator)
+			go contractClient.Start_accMiningEventListener(nodeService.ProposeValidator)
 
 			err := contractClient.StartMining(auth)
 			if err != nil {
@@ -101,7 +100,6 @@ func main() {
 	router.HandleFunc("/deployContract", nodeService.DeployContractHandler).Methods("POST")
 	router.HandleFunc("/latestBlock", nodeService.LatestBlockHandler).Methods("GET")
 	router.HandleFunc("/latency", nodeService.LatencyHandler).Methods("GET")
-	router.HandleFunc("/proposeValidator", nodeService.ProposeValidator).Methods("POST")
 	router.HandleFunc("/txnsearch/{txn_hash}", nodeService.TransactionSearchHandler).Methods("GET")
 	router.HandleFunc("/getNodeDetails/{index}", nodeService.Nms.GetNodeDetailsResponseHandler).Methods("GET")
 	router.HandleFunc("/getNodeList", nodeService.Nms.GetNodeListSelfResponseHandler).Methods("GET")
@@ -210,14 +208,9 @@ func InitLitionContractClient(
 
 	// Init Lition Smartcontract event listeners and auth
 	if miningFlag == true {
-		err = client.InitStartMiningEventListener()
+		err = client.InitAccMiningEventListener()
 		if err != nil {
 			log.Error("Unable to init 'StartMining' event listeners")
-			return
-		}
-		err = client.InitStoptMiningEventListener()
-		if err != nil {
-			log.Error("Unable to init 'StopMining' event listeners")
 			return
 		}
 	}

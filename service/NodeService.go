@@ -35,15 +35,6 @@ type ConnectionInfo struct {
 	Enode string `json:"enode"`
 }
 
-type ProposeValidatorRequest struct {
-	ValidatorAddress string `json:"validator-address,omitempty"`
-	Vote             bool   `json:"vote,omitempty"`
-}
-
-type ProposeValidatorResponse struct {
-	Success bool `json:"success"`
-}
-
 type PendingRequests struct {
 	NodeName string `json:"nodeName"`
 	Enode    string `json:"enode"`
@@ -301,18 +292,11 @@ var warning = 0
 var lastCrawledBlock = 0
 var mailServerConfig MailServerConfig
 
-func (nsi *NodeServiceImpl) proposeValidator(url string, validatorAddress string, auth bool) (response ProposeValidatorResponse) {
+func (nsi *NodeServiceImpl) ethProposeValidator(url string, validatorAddress string, vote bool) error {
 	var nodeUrl = url
 	ethClient := client.EthClient{nodeUrl}
 
-	err := ethClient.ProposeValidator(validatorAddress, auth)
-	if err == nil {
-		response.Success = true
-	} else {
-		response.Success = false
-	}
-
-	return response
+	return ethClient.ProposeValidator(validatorAddress, vote)
 }
 
 func (nsi *NodeServiceImpl) getGenesis(url string) (response GetGenesisResponse) {
@@ -1487,22 +1471,16 @@ func (nsi *NodeServiceImpl) InitInternalContract(url string) {
 }
 
 // This wrapper is used in event listener for automatic voting
-func (nsi *NodeServiceImpl) VoteValidator(event *litionScClient.LitionScClientStartMining) {
+func (nsi *NodeServiceImpl) ProposeValidator(event *litionScClient.LitionScClientAccountMining) {
 	validatorAddress := event.Account.String()
-	log.Info("Aut. VoteValidator function invoked. Validator: ", validatorAddress)
-	nsi.proposeValidator(nsi.Url, validatorAddress, true)
-}
-
-// This wrapper is used in event listener for automatic unvoting
-func (nsi *NodeServiceImpl) UnvoteValidator(event *litionScClient.LitionScClientStopMining) {
-	validatorAddress := event.Account.String()
-	log.Info("Aut. UnvoteValidator function invoked. Validator: ", validatorAddress)
-	nsi.proposeValidator(nsi.Url, validatorAddress, false)
+	voteFlag := event.Mining
+	log.Info("Aut. ProposeValidator function invoked. Validator: ", validatorAddress, ", vote flag: ", voteFlag)
+	nsi.ethProposeValidator(nsi.Url, validatorAddress, voteFlag)
 }
 
 func (nsi *NodeServiceImpl) UnvoteValidatorInternal(validatorAddress string) {
-	log.Info("Aut. UnvoteValidator function invoked. Validator: ", validatorAddress)
-	nsi.proposeValidator(nsi.Url, validatorAddress, false)
+	log.Info("UnvoteValidator(itself) function invoked. Validator: ", validatorAddress)
+	nsi.ethProposeValidator(nsi.Url, validatorAddress, false)
 }
 
 func byte32(s []byte) (a *[32]byte) {
@@ -1515,14 +1493,14 @@ func byte32(s []byte) (a *[32]byte) {
 func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 	ethClient := client.EthClient{nsi.Url}
 	blockNumber := util.HexStringtoInt64(ethClient.BlockNumber())
-	lastNotarySc, err := nsi.LitionContractClient.GetLastNotary()
+	chainDynamicDetails, err := nsi.LitionContractClient.GetChainDynamicDetails()
 
 	if err != nil {
 		log.Error("Notary: ", err)
 		return
 	}
 
-	lastNotary := lastNotarySc.NotaryBlock.Int64()
+	lastNotary := chainDynamicDetails.LastNotaryBlock.Int64()
 
 	if nsi.LastInternalNotary < lastNotary {
 		nsi.LastInternalNotary = lastNotary

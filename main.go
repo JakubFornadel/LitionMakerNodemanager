@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -78,25 +79,34 @@ func main() {
 				if err != nil {
 					log.Fatal("Unable to start mining. Err: ", err)
 				}
-				log.Info("'StartMining' tx sent")
+				log.Info("StartMining tx sent")
 
 				nodeService.MiningRegistered = false
 				nodeService.MiningRegisteredChan = make(chan struct{})
 
+				ethScanURL := ""
+				if strings.Contains(*infuraURL, "ropsten") == true {
+					ethScanURL = "https://ropsten.etherscan.io/tx/" + tx.Hash().String()
+				} else {
+					ethScanURL = "https://etherscan.io/tx/" + tx.Hash().String()
+				}
+
+				terminalMsg :=
+					"\n*****************************************************************************\n" +
+						"**** Waiting for StartMinig to be registered in Lition Smart Contract... ****\n" +
+						"*****************************************************************************\n\n" +
+
+						"It might take from few seconds to few hours(edge case when ethereum network is halted)\n\n" +
+						"You can check status of the StartMining transaction here: " + ethScanURL + "\n"
+				fmt.Printf(terminalMsg)
+
 				// Wait for StartMining to be processed so user can register his node without being rejected by nodes
 				// Validators can send free tx only once per 5 seconds and they must be registered in SC as active validators
-				log.Info("****************************************************************************")
-				log.Info("**** Waiting for StartMing to be registered in Lition Smart Contract... ****")
-				log.Info("****************************************************************************")
-
-				log.Info("It might take from few seconds to few hours(edge case when ethereum network is halted)")
-				log.Info("If you are running node on testnet, check status of the tx here: https://ropsten.etherscan.io/tx/0x", tx.Hash().String())
-				log.Info("If you are running node on mainnet, check status of the tx here: https://etherscan.io/tx/0x", tx.Hash().String())
-
 				<-nodeService.MiningRegisteredChan
 
 				// Wait a few seconds so nodes register this account as active validator and do not reject it's internal SC transactions
 				time.Sleep(10 * time.Second)
+				log.Info("StartMining successfully registered")
 			}
 		}
 

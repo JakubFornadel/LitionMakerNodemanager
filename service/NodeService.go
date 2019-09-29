@@ -1614,7 +1614,7 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 				for index, statsMiner := range miners {
 					advancedSentData += statsMiner.String() + " -> BlockMined: " + strconv.FormatInt(int64(blocks[index]), 10) + "\n"
 				}
-				advancedSentData = "\nUsers consumptions: \n\n"
+				advancedSentData += "\nUsers consumptions: \n\n"
 				for index, statsUser := range users {
 					advancedSentData += statsUser.String() + " -> GasConsumption: " + strconv.FormatInt(int64(gas[index]), 10) + "\n"
 				}

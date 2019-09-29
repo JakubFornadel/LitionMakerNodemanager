@@ -1555,10 +1555,21 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 
 		miners := make([]common.Address, 0, len(stats.Validated))
 		blocks := make([]uint32, 0, len(stats.Validated))
+		flag := true
+		publicKey := crypto.PubkeyToAddress(privateKey.PublicKey)
 		for k := range stats.Validated {
 			miners = append(miners, k)
+			if k == publicKey {
+				flag = false
+			}
 			blocks = append(blocks, stats.Validated[k])
 		}
+		//if my addres is not part of miners, something is wrong, do nothing
+		if flag {
+			log.Error("Notary I am not a miner!")
+			return
+		}
+
 		users := make([]common.Address, 0, len(stats.GasUsed))
 		gas := make([]uint32, 0, len(stats.GasUsed))
 		for k := range stats.GasUsed {

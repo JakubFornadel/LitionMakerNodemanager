@@ -1528,7 +1528,7 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 		nsi.LastInternalNotary = lastNotary
 	}
 
-	notaryWindows := int64(119)
+	notaryWindows := int64(19)
 	multiplier := (blockNumber - lastNotary) / notaryWindows
 	notary := lastNotary + notaryWindows*multiplier
 	notaryHex := fmt.Sprint("0x", strconv.FormatInt(notary, 16))
@@ -1626,7 +1626,7 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 				tx, err := nsi.LitionContractClient.Notary(bind.NewKeyedTransactor(privateKey), new(big.Int).SetInt64(lastNotary+1), new(big.Int).SetInt64(notary),
 					miners, blocks, users, gas, stats.MaxGas, v, r, s)
 				if err == nil {
-					log.Info("Notary Success, tx Hash: ", tx.Hash().String())
+					log.Info("Notary successfully sent, tx Hash: ", tx.Hash().String())
 				} else {
 					log.Error("Notary failed: ", err)
 

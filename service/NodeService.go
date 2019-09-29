@@ -1036,9 +1036,17 @@ func (nsi *NodeServiceImpl) RegisterNodeDetails(url string) {
 		util.DeleteProperty("REGISTERED=", "/home/setup.conf")
 		nsi.InitInternalContract(url)
 		var tx string
+
+		var timeOutSecs uint = 1
+		var maxTimeOutSesc uint = 24 * 60 * 60 // 24 hours
 		for tx == "" {
-			time.Sleep(1 * time.Second)
+			time.Sleep(time.Duration(timeOutSecs * 1000000000 /* nanoseconds*/))
 			tx = nsi.Nms.RegisterNode(nodename, role, pubKey, enode, ipAddr)
+
+			if timeOutSecs > maxTimeOutSesc {
+				log.Fatal("Unable to register node after ", maxTimeOutSesc, " seconds")
+			}
+			timeOutSecs *= 2
 		}
 	}
 }
@@ -1596,10 +1604,22 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 
 				log.Info("Notary: sending..., Data:")
 				sentData := "StartBlock: " + strconv.FormatInt(lastNotary+1, 10) + ", EndBlock: " + strconv.FormatInt(notary, 10) + "\n" +
-					"LargestTx: " + strconv.FormatInt(int64(stats.MaxGas), 10) + "SignaturesCount: " + strconv.Itoa(len(v)) + "\n" +
-					"MinersCount: " + strconv.Itoa(len(miners)) + "BlocksCount: " + strconv.Itoa(len(blocks)) + "\n" +
-					"UsersCount: " + strconv.Itoa(len(users)) + "GasCount: " + strconv.Itoa(len(gas)) + "\n\n"
+					"LargestTx: " + strconv.FormatInt(int64(stats.MaxGas), 10) + ", SignaturesCount: " + strconv.Itoa(len(v)) + "\n" +
+					"MinersCount: " + strconv.Itoa(len(miners)) + ", MinersBlocksMinedCount: " + strconv.Itoa(len(blocks)) + "\n" +
+					"UsersCount: " + strconv.Itoa(len(users)) + ", UsersGasConsumptionCount: " + strconv.Itoa(len(gas)) + "\n\n"
 				fmt.Printf(sentData)
+
+				var advancedSentData string
+				advancedSentData = "Miners blocks mined: \n\n"
+				for index, statsMiner := range miners {
+					advancedSentData += statsMiner.String() + " -> BlockMined: " + strconv.FormatInt(int64(blocks[index]), 10) + "\n"
+				}
+				advancedSentData = "\nUsers consumptions: \n\n"
+				for index, statsUser := range users {
+					advancedSentData += statsUser.String() + " -> GasConsumption: " + strconv.FormatInt(int64(gas[index]), 10) + "\n"
+				}
+
+				fmt.Printf(advancedSentData)
 
 				tx, err := nsi.LitionContractClient.Notary(bind.NewKeyedTransactor(privateKey), new(big.Int).SetInt64(lastNotary+1), new(big.Int).SetInt64(notary),
 					miners, blocks, users, gas, stats.MaxGas, v, r, s)

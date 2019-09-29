@@ -1058,6 +1058,10 @@ func (nsi *NodeServiceImpl) NetworkManagerContractDeployer(url string) {
 		contAddAppend := fmt.Sprint("CONTRACT_ADD=", contAdd, "\n")
 		util.AppendStringToFile("/home/setup.conf", contAddAppend)
 		util.DeleteProperty("CONTRACT_ADD=", "/home/setup.conf")
+
+		// Wait after deploying internal SC and before calling it again(registering node) so
+		// the second tx does not get rejected on the node level because of validator free allowed tx limit
+		time.Sleep(5 * time.Second)
 	}
 	nsi.InitInternalContract(url)
 }

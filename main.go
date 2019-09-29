@@ -109,7 +109,7 @@ func main() {
 				<-nodeService.MiningRegisteredChan
 
 				// Wait a few seconds so nodes register this account as active validator and do not reject it's internal SC transactions
-				time.Sleep(10 * time.Second)
+				time.Sleep(5 * time.Second)
 				log.Info("StartMining successfully registered")
 			}
 		}

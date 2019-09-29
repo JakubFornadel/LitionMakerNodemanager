@@ -1528,7 +1528,7 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 		nsi.LastInternalNotary = lastNotary
 	}
 
-	notaryWindows := int64(19)
+	notaryWindows := int64(119)
 	multiplier := (blockNumber - lastNotary) / notaryWindows
 	notary := lastNotary + notaryWindows*multiplier
 	notaryHex := fmt.Sprint("0x", strconv.FormatInt(notary, 16))

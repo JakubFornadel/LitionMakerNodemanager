@@ -131,6 +131,8 @@ func main() {
 				}
 			}()
 		}
+
+		log.Info("Node is running")
 	}()
 
 	router.HandleFunc("/txn/{txn_hash}", nodeService.GetTransactionInfoHandler).Methods("GET")

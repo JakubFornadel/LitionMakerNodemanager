@@ -73,16 +73,12 @@ func main() {
 			}
 
 			if isActiveValidator == false {
-
 				// Let lition SC know that this node wants to start mining
 				tx, err := contractClient.StartMining(auth)
 				if err != nil {
 					log.Fatal("Unable to start mining. Err: ", err)
 				}
 				log.Info("StartMining tx sent")
-
-				nodeService.MiningRegistered = false
-				nodeService.MiningRegisteredChan = make(chan struct{})
 
 				ethScanURL := ""
 				if strings.Contains(*infuraURL, "ropsten") == true {
@@ -91,26 +87,31 @@ func main() {
 					ethScanURL = "https://etherscan.io/tx/" + tx.Hash().String()
 				}
 
-				terminalMsg :=
-					"\n*****************************************************************************\n" +
-						"**** Waiting for StartMinig to be registered in Lition Smart Contract... ****\n" +
-						"*****************************************************************************\n\n" +
+				log.Info("You can check status of the StartMining transaction here: " + ethScanURL)
 
-						"It might take from few seconds to few hours(edge case when ethereum network is halted). " +
-						"You can check status of the StartMining transaction here:\n" + ethScanURL + "\n\n" +
-						"In case it takes too long and you need to speed up things, you can manually call StartMining method with " +
-						"higher gas price through our SideChain Manager here:\nhttps://lition.io/sidechainmanager\n\n" +
-						"Do not shut down this process in the meantime.\n\n" +
-						"*****************************************************************************\n\n"
-				fmt.Printf(terminalMsg)
+				// nodeService.MiningRegistered = false
+				// nodeService.MiningRegisteredChan = make(chan struct{})
 
-				// Wait for StartMining to be processed so user can register his node without being rejected by nodes
-				// Validators can send free tx only once per 5 seconds and they must be registered in SC as active validators
-				<-nodeService.MiningRegisteredChan
+				// terminalMsg :=
+				// 	"\n*****************************************************************************\n" +
+				// 		"**** Waiting for StartMinig to be registered in Lition Smart Contract... ****\n" +
+				// 		"*****************************************************************************\n\n" +
 
-				// Wait a few seconds so nodes register this account as active validator and do not reject it's internal SC transactions
-				time.Sleep(5 * time.Second)
-				log.Info("StartMining successfully registered")
+				// 		"It might take from few seconds to few hours(edge case when ethereum network is halted). " +
+				// 		"You can check status of the StartMining transaction here:\n" + ethScanURL + "\n\n" +
+				// 		"In case it takes too long and you need to speed up things, you can manually call StartMining method with " +
+				// 		"higher gas price through our SideChain Manager here:\nhttps://lition.io/sidechainmanager\n\n" +
+				// 		"Do not shut down this process in the meantime.\n\n" +
+				// 		"*****************************************************************************\n\n"
+				// fmt.Printf(terminalMsg)
+
+				// // Wait for StartMining to be processed so user can register his node without being rejected by nodes
+				// // Validators can send free tx only once per 5 seconds and they must be registered in SC as active validators
+				// <-nodeService.MiningRegisteredChan
+
+				// // Wait a few seconds so nodes register this account as active validator and do not reject it's internal SC transactions
+				// time.Sleep(5 * time.Second)
+				// log.Info("StartMining successfully registered")
 			}
 		}
 

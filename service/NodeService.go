@@ -1048,6 +1048,8 @@ func (nsi *NodeServiceImpl) RegisterNodeDetails(url string) {
 			}
 			timeOutSecs *= 2
 		}
+
+		log.Info("Node registered on Network Manager contract")
 	}
 }
 

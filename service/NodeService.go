@@ -1071,7 +1071,7 @@ func (nsi *NodeServiceImpl) NetworkManagerContractDeployer(url string) {
 
 		// Wait after deploying internal SC and before calling it again(registering node) so
 		// the second tx does not get rejected on the node level because of validator free allowed tx limit
-		//time.Sleep(5 * time.Second)
+		time.Sleep(5 * time.Second)
 	}
 	nsi.InitInternalContract(url)
 }
@@ -1512,7 +1512,16 @@ func byte32(s []byte) (a *[32]byte) {
 	return a
 }
 
+func printHex(b []byte) {
+	dst := make([]byte, hex.EncodedLen(len(b)))
+
+	hex.Encode(dst, b)
+	fmt.Printf("\"0x%s\",", dst)
+}
+
 func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
+	log.Info("Notary call invoked")
+
 	ethClient := client.EthClient{nsi.Url}
 	blockNumber := util.HexStringtoInt64(ethClient.BlockNumber())
 	chainDynamicDetails, err := nsi.LitionContractClient.GetChainDynamicDetails()
@@ -1528,12 +1537,13 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 		nsi.LastInternalNotary = lastNotary
 	}
 
-	notaryWindows := int64(119)
+	notaryWindows := int64(59)
 	multiplier := (blockNumber - lastNotary) / notaryWindows
 	notary := lastNotary + notaryWindows*multiplier
 	notaryHex := fmt.Sprint("0x", strconv.FormatInt(notary, 16))
 
 	if nsi.LastMainetNotary >= notary {
+		log.Info("LastMainetNotary >= notary, return")
 		return
 	}
 
@@ -1607,33 +1617,59 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 				s := make([][32]byte, 0, sigCount)
 				r := make([][32]byte, 0, sigCount)
 				for i := 0; i < sigCount; i++ {
+					log.Info("Sig ", i, ": ")
 					sig := nsi.Nms.GetSignatures(notary, i)
 					v = append(v, sig.V)
+					fmt.Println(string(sig.V))
 					s = append(s, sig.S)
+					printHex(sig.S[:]))
 					r = append(r, sig.R)
+					printHex(convert(sig.R[:]))
 				}
 
 				nsi.LastMainetNotary = notary
 
 				log.Info("Notary: sending..., Data:")
-				sentData := "StartBlock: " + strconv.FormatInt(lastNotary+1, 10) + ", EndBlock: " + strconv.FormatInt(notary, 10) + "\n" +
-					"LargestTx: " + strconv.FormatInt(int64(stats.MaxGas), 10) + ", SignaturesCount: " + strconv.Itoa(len(v)) + "\n" +
-					"MinersCount: " + strconv.Itoa(len(miners)) + ", MinersBlocksMinedCount: " + strconv.Itoa(len(blocks)) + "\n" +
-					"UsersCount: " + strconv.Itoa(len(users)) + ", UsersGasConsumptionCount: " + strconv.Itoa(len(gas)) + "\n\n"
+				
+				var minersData string = "["
+				var blocksData string = "["
+				for index, statsMiner := range miners {
+					minersData += "\"" + statsMiner.String() + "\"," 
+					blocksData += strconv.FormatInt(int64(blocks[index]), 10) + ","
+				}
+				minersData += "]"
+				blocksData += "]"
+
+				var usersData string = "["
+				var gasData string = "["
+				for index, statsUser := range miners {
+					usersData += "\"" + statsUser.String() + "\"," 
+					gasData += strconv.FormatInt(int64(gas[index]), 10) + ","
+				}
+				usersData += "]"
+				gasData += "]"
+
+				sentData := "StartBlock:\n" + strconv.FormatInt(lastNotary+1, 10) +  "\n" +
+										"EndBlock:\n" + strconv.FormatInt(notary, 10) + "\n" +
+										"Miners:\n" + minersData + "\n" +
+										"BlocksMined:\n" + blocksData + "\n" +
+										"Users:\n" + usersData + "\n" +
+										"GasCOnsumptions:\n" + gasData + "\n" +
+										"LargestTx:\n" + strconv.FormatInt(int64(stats.MaxGas), 10) + "\n" +
 				fmt.Printf(sentData)
 
-				var advancedSentData string
-				advancedSentData = "Miners blocks mined: \n\n"
-				for index, statsMiner := range miners {
-					advancedSentData += statsMiner.String() + " -> BlockMined: " + strconv.FormatInt(int64(blocks[index]), 10) + "\n"
-				}
-				advancedSentData += "\nUsers consumptions: \n\n"
-				for index, statsUser := range users {
-					advancedSentData += statsUser.String() + " -> GasConsumption: " + strconv.FormatInt(int64(gas[index]), 10) + "\n"
+				log.Info("v: ", v)
+
+				fmt.Printf("r\n")
+				for index, rGet := range r {
+					printHex(rGet)
 				}
 
-				fmt.Printf(advancedSentData)
-
+				fmt.Printf("s\n")
+				for index, sGet := range s {
+					printHex(sGet)
+				}
+			
 				tx, err := nsi.LitionContractClient.Notary(bind.NewKeyedTransactor(privateKey), new(big.Int).SetInt64(lastNotary+1), new(big.Int).SetInt64(notary),
 					miners, blocks, users, gas, stats.MaxGas, v, r, s)
 				if err == nil {

@@ -3,6 +3,7 @@ package service
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -1552,42 +1553,25 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 		stats := ethClient.GetStatistics(fmt.Sprint("0x", strconv.FormatInt(lastNotary+1, 16)), notaryHex)
 
 		// No transactions present, do no call notary
-		if len(stats.GasUsed) == 0 {
-			log.Info("Notary not sent, GasUsed from node statistics is empty - there are no transactions present")
+		if len(stats.Users) == 0 {
+			log.Debug("Notary not sent, Users consumptions from node statistics is empty")
+			return
+		}
+
+		// No miners present, do no call notary
+		if len(stats.Validators) == 0 {
+			log.Debug("Notary not sent, Miners from node statistics is empty")
 			return
 		}
 
 		// Invalid max gas provided
 		if stats.MaxGas == 0 {
-			log.Info("Notary not sent, MaxGas from node statistics == 0 - there are no transactions present")
+			log.Debug("Notary not sent, MaxGas from node statistics == 0")
 			return
 		}
 
-		miners := make([]common.Address, 0, len(stats.Validated))
-		blocks := make([]uint32, 0, len(stats.Validated))
-		flag := true
-		publicKey := crypto.PubkeyToAddress(privateKey.PublicKey)
-		for k := range stats.Validated {
-			miners = append(miners, k)
-			if k == publicKey {
-				flag = false
-			}
-			blocks = append(blocks, stats.Validated[k])
-		}
-		//if my addres is not part of miners, something is wrong, do nothing
-		if flag {
-			log.Error("Notary I am not a miner!")
-			return
-		}
-
-		users := make([]common.Address, 0, len(stats.GasUsed))
-		gas := make([]uint32, 0, len(stats.GasUsed))
-		for k := range stats.GasUsed {
-			users = append(users, k)
-			gas = append(gas, stats.GasUsed[k])
-		}
 		if nsi.LastInternalNotary < notary {
-			hashToSign := nsi.Nms.GetSignatureHashFromNotary(notary, miners, blocks, users, gas, stats.MaxGas)
+			hashToSign := nsi.Nms.GetSignatureHashFromNotary(notary, stats.Validators, stats.BlocksMined, stats.Users, stats.GasConsumptions, stats.MaxGas)
 			signature, err := crypto.Sign(hashToSign, privateKey)
 			if err != nil {
 				log.Error("Notary GetSignatureHashFromNotary err: ", err)
@@ -1599,11 +1583,11 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 		}
 
 		validators := ethClient.GetValidators(notaryHex)
-
 		if len(validators) < 1 {
-			log.Warn("Notary not sent, there are no validators on node level")
+			log.Debug("Notary not sent, there are no validators on node level")
 			return
 		}
+
 		//// External SC part ////
 		if validators[int(notary)%len(validators)] == crypto.PubkeyToAddress(privateKey.PublicKey) {
 			nodeRequired := len(validators)
@@ -1622,56 +1606,56 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 					v = append(v, sig.V)
 					fmt.Println(string(sig.V))
 					s = append(s, sig.S)
-					printHex(sig.S[:]))
+					printHex(sig.S[:])
 					r = append(r, sig.R)
-					printHex(convert(sig.R[:]))
+					printHex(sig.R[:])
 				}
 
 				nsi.LastMainetNotary = notary
 
 				log.Info("Notary: sending..., Data:")
-				
+
 				var minersData string = "["
 				var blocksData string = "["
-				for index, statsMiner := range miners {
-					minersData += "\"" + statsMiner.String() + "\"," 
-					blocksData += strconv.FormatInt(int64(blocks[index]), 10) + ","
+				for index, statsMiner := range stats.Validators {
+					minersData += "\"" + statsMiner.String() + "\","
+					blocksData += strconv.FormatInt(int64(stats.BlocksMined[index]), 10) + ","
 				}
 				minersData += "]"
 				blocksData += "]"
 
 				var usersData string = "["
 				var gasData string = "["
-				for index, statsUser := range miners {
-					usersData += "\"" + statsUser.String() + "\"," 
-					gasData += strconv.FormatInt(int64(gas[index]), 10) + ","
+				for index, statsUser := range stats.Users {
+					usersData += "\"" + statsUser.String() + "\","
+					gasData += strconv.FormatInt(int64(stats.GasConsumptions[index]), 10) + ","
 				}
 				usersData += "]"
 				gasData += "]"
 
-				sentData := "StartBlock:\n" + strconv.FormatInt(lastNotary+1, 10) +  "\n" +
-										"EndBlock:\n" + strconv.FormatInt(notary, 10) + "\n" +
-										"Miners:\n" + minersData + "\n" +
-										"BlocksMined:\n" + blocksData + "\n" +
-										"Users:\n" + usersData + "\n" +
-										"GasCOnsumptions:\n" + gasData + "\n" +
-										"LargestTx:\n" + strconv.FormatInt(int64(stats.MaxGas), 10) + "\n" +
+				sentData := "StartBlock:\n" + strconv.FormatInt(lastNotary+1, 10) + "\n" +
+					"EndBlock:\n" + strconv.FormatInt(notary, 10) + "\n" +
+					"Miners:\n" + minersData + "\n" +
+					"BlocksMined:\n" + blocksData + "\n" +
+					"Users:\n" + usersData + "\n" +
+					"GasCOnsumptions:\n" + gasData + "\n" +
+					"LargestTx:\n" + strconv.FormatInt(int64(stats.MaxGas), 10) + "\n"
 				fmt.Printf(sentData)
 
 				log.Info("v: ", v)
 
 				fmt.Printf("r\n")
 				for index, rGet := range r {
-					printHex(rGet)
+					printHex(rGet[:])
 				}
 
 				fmt.Printf("s\n")
 				for index, sGet := range s {
-					printHex(sGet)
+					printHex(sGet[:])
 				}
-			
+
 				tx, err := nsi.LitionContractClient.Notary(bind.NewKeyedTransactor(privateKey), new(big.Int).SetInt64(lastNotary+1), new(big.Int).SetInt64(notary),
-					miners, blocks, users, gas, stats.MaxGas, v, r, s)
+					stats.Validators, stats.BlocksMined, stats.Users, stats.GasConsumptions, stats.MaxGas, v, r, s)
 				if err == nil {
 					log.Info("Notary successfully sent, tx Hash: ", tx.Hash().String())
 				} else {

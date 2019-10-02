@@ -1478,7 +1478,7 @@ func (nsi *NodeServiceImpl) InitInternalContract(url string) {
 			log.Error("InitInternalContract ", err)
 		}
 
-		lition, err := internalContract.NewLition(common.HexToAddress(contractAdd), eth)
+		lition, err := internalContract.NewScClient(common.HexToAddress(contractAdd), eth)
 		if err != nil {
 			log.Error("internalContract.NewLition ", err)
 		}
@@ -1645,12 +1645,12 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 				log.Info("v: ", v)
 
 				fmt.Printf("r\n")
-				for index, rGet := range r {
+				for _, rGet := range r {
 					printHex(rGet[:])
 				}
 
 				fmt.Printf("s\n")
-				for index, sGet := range s {
+				for _, sGet := range s {
 					printHex(sGet[:])
 				}
 

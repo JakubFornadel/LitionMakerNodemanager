@@ -20,6 +20,6 @@ solc --abi --overwrite --optimize NetworkManagerContract.sol --output-dir contra
 #### Create SC go class 
 run
 ```
-abigen --abi=contractclient/internalcontract/NetworkManagerContract.abi --pkg=litionScClient --out=contractclient/internalcontract/NetworkManagerContract.go 
-// Replace imports in client/litionRegistry.go from "github.com/ethereum/go-ethereum" to "gitlab.com/lition/lition"
+abigen --abi=contractclient/internalcontract/NetworkManagerContract.abi --pkg=ScClient --out=contractclient/internalcontract/NetworkManagerContract.go 
+// Replace imports in NetworkManagerContract.go from "github.com/ethereum/go-ethereum" to "gitlab.com/lition/lition"
 ```

@@ -22,7 +22,7 @@ type NodeDetails struct {
 type NetworkMapContractClient struct {
 	client.EthClient
 	Auth *bind.TransactOpts
-	Ic   *internalContract.Lition
+	Ic   *internalContract.ScClient
 }
 
 type GetNodeDetailsParam int

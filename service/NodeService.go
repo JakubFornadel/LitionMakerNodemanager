@@ -1521,8 +1521,6 @@ func printHex(b []byte) {
 }
 
 func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
-	log.Info("Notary call invoked")
-
 	ethClient := client.EthClient{nsi.Url}
 	blockNumber := util.HexStringtoInt64(ethClient.BlockNumber())
 	chainDynamicDetails, err := nsi.LitionContractClient.GetChainDynamicDetails()
@@ -1544,7 +1542,6 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 	notaryHex := fmt.Sprint("0x", strconv.FormatInt(notary, 16))
 
 	if nsi.LastMainetNotary >= notary {
-		log.Info("LastMainetNotary >= notary, return")
 		return
 	}
 
@@ -1601,14 +1598,10 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 				s := make([][32]byte, 0, sigCount)
 				r := make([][32]byte, 0, sigCount)
 				for i := 0; i < sigCount; i++ {
-					log.Info("Sig ", i, ": ")
 					sig := nsi.Nms.GetSignatures(notary, i)
 					v = append(v, sig.V)
-					fmt.Println(string(sig.V))
 					s = append(s, sig.S)
-					printHex(sig.S[:])
 					r = append(r, sig.R)
-					printHex(sig.R[:])
 				}
 
 				nsi.LastMainetNotary = notary
@@ -1649,10 +1642,11 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 					printHex(rGet[:])
 				}
 
-				fmt.Printf("s\n")
+				fmt.Printf("\ns\n")
 				for _, sGet := range s {
 					printHex(sGet[:])
 				}
+				fmt.Printf("\n\n")
 
 				tx, err := nsi.LitionContractClient.Notary(bind.NewKeyedTransactor(privateKey), new(big.Int).SetInt64(lastNotary+1), new(big.Int).SetInt64(notary),
 					stats.Validators, stats.BlocksMined, stats.Users, stats.GasConsumptions, stats.MaxGas, v, r, s)

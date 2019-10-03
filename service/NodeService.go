@@ -1544,6 +1544,21 @@ func printHex(b []byte) {
 
 func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 	ethClient := client.EthClient{nsi.Url}
+
+	iAmValidator := false
+	for _, bftValidator := range ethClient.GetValidators(ethClient.BlockNumber()) {
+		if nsi.NodeAccAddress == bftValidator.String() {
+			iAmValidator = true
+		}
+	}
+
+	if iAmValidator == false {
+		log.Warn("You are not registred as validator on geth level. Please control this by attaching to the rpc port of your node and call istanbul.GetValidators(). ",
+			"In case your node is running and you are not voted as validator, please call StartMining on Lition SicechainManger here: https://www.lition.io/sidechainmanager/ ",
+			"and you will be automatically voted as validator by other nodes.")
+		return
+	}
+
 	blockNumber := util.HexStringtoInt64(ethClient.BlockNumber())
 
 	chainDynamicDetails, err := nsi.LitionContractClient.GetChainDynamicDetails()
@@ -1566,20 +1581,6 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 	multiplier := (blockNumber - lastNotary) / notaryPeriod
 	notary := lastNotary + notaryPeriod*multiplier
 	notaryHex := fmt.Sprint("0x", strconv.FormatInt(notary, 16))
-
-	iAmValidator := false
-	for _, bftValidator := range ethClient.GetValidators(notaryHex) {
-		if nsi.NodeAccAddress == bftValidator.String() {
-			iAmValidator = true
-		}
-	}
-
-	if iAmValidator == false {
-		log.Warn("You are not registred as validator on geth level. Please control this by attaching to the rpc port of your node and call istanbul.GetValidators(). ",
-			"In case your node is running and you are not voted as validator, please call StartMining on Lition SicechainManger here: https://www.lition.io/sidechainmanager/ ",
-			"and you will be automatically voted as validator by other nodes.")
-		return
-	}
 
 	if nsi.LastMainetNotary >= notary {
 		return

@@ -234,6 +234,7 @@ type NodeServiceImpl struct {
 	NodeAccAddress       string
 	MiningRegisteredChan chan struct{}
 	MiningRegistered     bool
+	NotaryPeriod         uint64
 	Nms                  *contractclient.NetworkMapContractClient
 	LastInternalNotary   int64
 	LastMainetNotary     int64
@@ -295,6 +296,27 @@ var chartSize = 10
 var warning = 0
 var lastCrawledBlock = 0
 var mailServerConfig MailServerConfig
+
+func NewNodeServiceImpl(url string, litionContractClient *litionScClient.ContractClient, nodeAccAddress string, nms *contractclient.NetworkMapContractClient) (*NodeServiceImpl, error) {
+	neNodeServiceImpl := new(NodeServiceImpl)
+
+	chainStaticDetails, err := litionContractClient.GetChainStaticDetails()
+	if err != nil {
+		return nil, err
+	}
+	neNodeServiceImpl.NotaryPeriod = chainStaticDetails.NotaryPeriod.Uint64()
+
+	neNodeServiceImpl.Url = url
+	neNodeServiceImpl.LitionContractClient = litionContractClient
+	neNodeServiceImpl.NodeAccAddress = nodeAccAddress
+	neNodeServiceImpl.Nms = nms
+	neNodeServiceImpl.MiningRegistered = true
+	neNodeServiceImpl.MiningRegisteredChan = nil
+	neNodeServiceImpl.LastInternalNotary = 0
+	neNodeServiceImpl.LastMainetNotary = 0
+
+	return neNodeServiceImpl, nil
+}
 
 func (nsi *NodeServiceImpl) ethProposeValidator(url string, validatorAddress string, vote bool) error {
 	var nodeUrl = url
@@ -1536,9 +1558,13 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 		nsi.LastInternalNotary = lastNotary
 	}
 
-	notaryWindows := int64(119)
-	multiplier := (blockNumber - lastNotary) / notaryWindows
-	notary := lastNotary + notaryWindows*multiplier
+	// TODO: uncomment this for mainnet
+	//notaryPeriod := nsi.NotaryPeriod
+
+	notaryPeriod := int64(59)
+
+	multiplier := (blockNumber - lastNotary) / notaryPeriod
+	notary := lastNotary + notaryPeriod*multiplier
 	notaryHex := fmt.Sprint("0x", strconv.FormatInt(notary, 16))
 
 	if nsi.LastMainetNotary >= notary {

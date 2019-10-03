@@ -48,7 +48,10 @@ func main() {
 	}
 
 	router := mux.NewRouter()
-	nodeService := service.NodeServiceImpl{*nodeUrl, contractClient, pubKey, nil, true, &contractclient.NetworkMapContractClient{client.EthClient{*nodeUrl}, auth, nil}, 0, 0}
+	nodeService, err := service.NewNodeServiceImpl(*nodeUrl, contractClient, pubKey, &contractclient.NetworkMapContractClient{client.EthClient{*nodeUrl}, auth, nil})
+	if err != nil {
+		log.Fatal("NewNodeServiceImpl init failed. Error: ", err)
+	}
 
 	ticker := time.NewTicker(86400 * time.Second)
 	go func() {

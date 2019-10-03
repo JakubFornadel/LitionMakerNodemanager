@@ -1567,7 +1567,7 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 	notary := lastNotary + notaryPeriod*multiplier
 	notaryHex := fmt.Sprint("0x", strconv.FormatInt(notary, 16))
 
-	var iAmValidator bool = false
+	iAmValidator := false
 	for _, bftValidator := range ethClient.GetValidators(notaryHex) {
 		if nsi.NodeAccAddress == bftValidator.String() {
 			iAmValidator = true

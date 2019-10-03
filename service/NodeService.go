@@ -1571,9 +1571,16 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 		return
 	}
 
+	var notaryStartBlock int64
+	if lastNotary == 0 {
+		notaryStartBlock = 0
+	} else {
+		notaryStartBlock = lastNotary + 1
+	}
+
 	//// Internal SC part ////
 	if blockNumber >= notary {
-		stats := ethClient.GetStatistics(fmt.Sprint("0x", strconv.FormatInt(lastNotary+1, 16)), notaryHex)
+		stats := ethClient.GetStatistics(fmt.Sprint("0x", strconv.FormatInt(notaryStartBlock, 16)), notaryHex)
 
 		// No transactions present, do no call notary
 		if len(stats.Users) == 0 {
@@ -1632,57 +1639,58 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 
 				nsi.LastMainetNotary = notary
 
-				log.Info("Notary: sending..., Data:")
-
-				var minersData string = "["
-				var blocksData string = "["
-				for index, statsMiner := range stats.Validators {
-					minersData += "\"" + statsMiner.String() + "\","
-					blocksData += strconv.FormatInt(int64(stats.BlocksMined[index]), 10) + ","
-				}
-				minersData += "]"
-				blocksData += "]"
-
-				var usersData string = "["
-				var gasData string = "["
-				for index, statsUser := range stats.Users {
-					usersData += "\"" + statsUser.String() + "\","
-					gasData += strconv.FormatInt(int64(stats.GasConsumptions[index]), 10) + ","
-				}
-				usersData += "]"
-				gasData += "]"
-
-				sentData := "StartBlock:\n" + strconv.FormatInt(lastNotary+1, 10) + "\n" +
-					"EndBlock:\n" + strconv.FormatInt(notary, 10) + "\n" +
-					"Miners:\n" + minersData + "\n" +
-					"BlocksMined:\n" + blocksData + "\n" +
-					"Users:\n" + usersData + "\n" +
-					"GasCOnsumptions:\n" + gasData + "\n" +
-					"LargestTx:\n" + strconv.FormatInt(int64(stats.MaxGas), 10) + "\n"
-				fmt.Printf(sentData)
-
-				log.Info("v: ", v)
-
-				fmt.Printf("r\n")
-				for _, rGet := range r {
-					printHex(rGet[:])
-				}
-
-				fmt.Printf("\ns\n")
-				for _, sGet := range s {
-					printHex(sGet[:])
-				}
-				fmt.Printf("\n\n")
-
-				tx, err := nsi.LitionContractClient.Notary(bind.NewKeyedTransactor(privateKey), new(big.Int).SetInt64(lastNotary+1), new(big.Int).SetInt64(notary),
+				tx, err := nsi.LitionContractClient.Notary(bind.NewKeyedTransactor(privateKey), new(big.Int).SetInt64(notaryStartBlock), new(big.Int).SetInt64(notary),
 					stats.Validators, stats.BlocksMined, stats.Users, stats.GasConsumptions, stats.MaxGas, v, r, s)
 				if err == nil {
 					log.Info("Notary successfully sent, tx Hash: ", tx.Hash().String())
 				} else {
-					log.Error("Notary failed: ", err)
-
 					//reset notary in case of error (maybe not enough staking)
 					nsi.LastMainetNotary = lastNotary
+
+					log.Error("Notary failed: ", err)
+
+					// Print notary data
+					log.Info("Sent Data: ")
+
+					var minersData string = "["
+					var blocksData string = "["
+					for index, statsMiner := range stats.Validators {
+						minersData += "\"" + statsMiner.String() + "\","
+						blocksData += strconv.FormatInt(int64(stats.BlocksMined[index]), 10) + ","
+					}
+					minersData += "]"
+					blocksData += "]"
+
+					var usersData string = "["
+					var gasData string = "["
+					for index, statsUser := range stats.Users {
+						usersData += "\"" + statsUser.String() + "\","
+						gasData += strconv.FormatInt(int64(stats.GasConsumptions[index]), 10) + ","
+					}
+					usersData += "]"
+					gasData += "]"
+
+					sentData := "StartBlock:\n" + strconv.FormatInt(notaryStartBlock, 10) + "\n" +
+						"EndBlock:\n" + strconv.FormatInt(notary, 10) + "\n" +
+						"Miners:\n" + minersData + "\n" +
+						"BlocksMined:\n" + blocksData + "\n" +
+						"Users:\n" + usersData + "\n" +
+						"GasCOnsumptions:\n" + gasData + "\n" +
+						"LargestTx:\n" + strconv.FormatInt(int64(stats.MaxGas), 10) + "\n"
+					fmt.Printf(sentData)
+
+					log.Info("v: ", v)
+
+					fmt.Printf("r\n")
+					for _, rGet := range r {
+						printHex(rGet[:])
+					}
+
+					fmt.Printf("\ns\n")
+					for _, sGet := range s {
+						printHex(sGet[:])
+					}
+					fmt.Printf("\n\n")
 				}
 			}
 		}

@@ -1545,10 +1545,10 @@ func printHex(b []byte) {
 func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 	ethClient := client.EthClient{nsi.Url}
 	blockNumber := util.HexStringtoInt64(ethClient.BlockNumber())
-	chainDynamicDetails, err := nsi.LitionContractClient.GetChainDynamicDetails()
 
+	chainDynamicDetails, err := nsi.LitionContractClient.GetChainDynamicDetails()
 	if err != nil {
-		log.Error("Notary: ", err)
+		log.Error("Notary GetChainDynamicDetails() err: ", err)
 		return
 	}
 
@@ -1567,20 +1567,27 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 	notary := lastNotary + notaryPeriod*multiplier
 	notaryHex := fmt.Sprint("0x", strconv.FormatInt(notary, 16))
 
+	var iAmValidator bool = false
+	for _, bftValidator := range ethClient.GetValidators(notaryHex) {
+		if nsi.NodeAccAddress == bftValidator.String() {
+			iAmValidator = true
+		}
+	}
+
+	if iAmValidator == false {
+		log.Warn("You are not registred as validator on geth level. Please control this by attaching to the rpc port of your node and call istanbul.GetValidators(). ",
+			"In case your node is running and you are not voted as validator, please call StartMining on Lition SicechainManger here: https://www.lition.io/sidechainmanager/ ",
+			"and you will be automatically voted as validator by other nodes.")
+		return
+	}
+
 	if nsi.LastMainetNotary >= notary {
 		return
 	}
 
-	var notaryStartBlock int64
-	if lastNotary == 0 {
-		notaryStartBlock = 0
-	} else {
-		notaryStartBlock = lastNotary + 1
-	}
-
 	//// Internal SC part ////
 	if blockNumber >= notary {
-		stats := ethClient.GetStatistics(fmt.Sprint("0x", strconv.FormatInt(notaryStartBlock, 16)), notaryHex)
+		stats := ethClient.GetStatistics(fmt.Sprint("0x", strconv.FormatInt(lastNotary+1, 16)), notaryHex)
 
 		// No transactions present, do no call notary
 		if len(stats.Users) == 0 {
@@ -1639,7 +1646,7 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 
 				nsi.LastMainetNotary = notary
 
-				tx, err := nsi.LitionContractClient.Notary(bind.NewKeyedTransactor(privateKey), new(big.Int).SetInt64(notaryStartBlock), new(big.Int).SetInt64(notary),
+				tx, err := nsi.LitionContractClient.Notary(bind.NewKeyedTransactor(privateKey), new(big.Int).SetInt64(lastNotary+1), new(big.Int).SetInt64(notary),
 					stats.Validators, stats.BlocksMined, stats.Users, stats.GasConsumptions, stats.MaxGas, v, r, s)
 				if err == nil {
 					log.Info("Notary successfully sent, tx Hash: ", tx.Hash().String())
@@ -1670,7 +1677,7 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 					usersData += "]"
 					gasData += "]"
 
-					sentData := "StartBlock:\n" + strconv.FormatInt(notaryStartBlock, 10) + "\n" +
+					sentData := "StartBlock:\n" + strconv.FormatInt(lastNotary+1, 10) + "\n" +
 						"EndBlock:\n" + strconv.FormatInt(notary, 10) + "\n" +
 						"Miners:\n" + minersData + "\n" +
 						"BlocksMined:\n" + blocksData + "\n" +

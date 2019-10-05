@@ -70,12 +70,12 @@ func main() {
 			// Start standalone event listeners
 			go contractClient.Start_accMiningEventListener(nodeService.ProposeValidator)
 
-			isActiveValidator, err := contractClient.IsActiveValidator(pubKey)
+			userDetails, err := contractClient.GetUserDetails(pubKey)
 			if err != nil {
-				log.Fatal("Unable to call IsActiveValidator on SC. Err: ", err)
+				log.Fatal("Unable to call GetUserDetails on SC. Err: ", err)
 			}
 
-			if isActiveValidator == false {
+			if userDetails.Mining == false {
 				// Let lition SC know that this node wants to start mining
 				tx, err := contractClient.StartMining(auth)
 				if err != nil {
@@ -192,22 +192,25 @@ func main() {
 	<-c
 
 	if *miningFlag == true {
-		isActiveValidator, err := contractClient.IsActiveValidator(pubKey)
-		if err != nil {
+		isActiveValidator := true
+
+		userDetails, err := contractClient.GetUserDetails(pubKey)
+		if err == nil {
+			isActiveValidator = userDetails.Mining
+		} else {
 			log.Error("Unable to call IsActiveValidator on SC during shutdown. Unvote validator as he was active. Err: ", err)
-			isActiveValidator = true
 		}
 
 		if isActiveValidator == true {
+			// Unvote itself
+			nodeService.UnvoteValidatorInternal(pubKey)
+
 			// Stop mining
 			tx, err := contractClient.StopMining(auth)
 			if err != nil {
 				log.Fatal("Unable to stop mining. Err: ", err)
 			}
 			log.Info("StoptMining tx sent. Hash: ", tx.Hash().String())
-
-			// Unvote itself
-			//nodeService.UnvoteValidatorInternal(pubKey)
 		}
 	}
 

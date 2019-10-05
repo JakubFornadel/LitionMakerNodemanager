@@ -1554,7 +1554,7 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 
 	if iAmValidator == false {
 		log.Warn("You are not registred as validator on geth level. Please control this by attaching to the rpc port of your node and call istanbul.GetValidators(). ",
-			"In case your node is running and you are not voted as validator, please call StartMining on Lition SicechainManger here: https://www.lition.io/sidechainmanager/ ",
+			"In case your node is running for mote than 10 minutes and you are not voted as validator, please call StartMining on Lition SicechainManger here: https://www.lition.io/sidechainmanager/ ",
 			"and you will be automatically voted as validator by other nodes.")
 		return
 	}

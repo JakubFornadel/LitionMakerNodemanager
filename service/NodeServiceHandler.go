@@ -49,30 +49,52 @@ var pendCount = 0
 var nameMap = map[string]string{}
 var channelMap = make(map[string](chan string))
 
+// func (nsi *NodeServiceImpl) GetNmcAddress(w http.ResponseWriter, r *http.Request) {
+// 	var request JoinNetworkRequest
+// 	_ = json.NewDecoder(r.Body).Decode(&request)
+// 	accAddress := request.AccPubKey
+
+// 	var err error
+// 	var hasVested, hasDeposited bool
+// 	hasDeposited, err = nsi.LitionContractClient.IsAllowedToTransact(accAddress)
+// 	if err != nil {
+// 		log.Error("GetNmcAddress IsAllowedToTransact err: ", err)
+// 		w.WriteHeader(http.StatusInternalServerError)
+// 		w.Write([]byte("Internal error"))
+// 	}
+
+// 	if hasDeposited == false {
+// 		hasVested, err = nsi.LitionContractClient.IsAllowedToValidate(accAddress)
+// 		if err != nil {
+// 			log.Error("GetNmcAddress IsAllowedToValidate err: ", err)
+// 			w.WriteHeader(http.StatusInternalServerError)
+// 			w.Write([]byte("Internal error"))
+// 		}
+// 	}
+
+// 	if hasVested || hasDeposited {
+// 		response := nsi.getNmcAddress()
+// 		json.NewEncoder(w).Encode(response)
+// 		return
+// 	}
+
+// 	w.WriteHeader(http.StatusForbidden)
+// 	w.Write([]byte("Permission denied"))
+// }
+
 func (nsi *NodeServiceImpl) GetNmcAddress(w http.ResponseWriter, r *http.Request) {
 	var request JoinNetworkRequest
 	_ = json.NewDecoder(r.Body).Decode(&request)
 	accAddress := request.AccPubKey
 
-	var err error
-	var hasVested, hasDeposited bool
-	hasDeposited, err = nsi.LitionContractClient.IsAllowedToTransact(accAddress)
+	userDetails, err := nsi.LitionContractClient.GetUserDetails(accAddress)
 	if err != nil {
-		log.Error("GetNmcAddress IsAllowedToTransact err: ", err)
+		log.Error("GetNmcAddress GetUserDetails err: ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Internal error"))
 	}
 
-	if hasDeposited == false {
-		hasVested, err = nsi.LitionContractClient.IsAllowedToValidate(accAddress)
-		if err != nil {
-			log.Error("GetNmcAddress IsAllowedToValidate err: ", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("Internal error"))
-		}
-	}
-
-	if hasVested || hasDeposited {
+	if userDetails.Vesting.Uint64() > 0 || userDetails.Whitelisted == true {
 		response := nsi.getNmcAddress()
 		json.NewEncoder(w).Encode(response)
 		return
@@ -94,31 +116,22 @@ func (nsi *NodeServiceImpl) GetGenesisHandler(w http.ResponseWriter, r *http.Req
 
 	log.Info(fmt.Sprint("Join request received from node: ", nodename, " with IP: ", foreignIP, ", enode: ", enode, ", accPubKey: ", accPubKey, " and chainID: ", chainID))
 
-	if role == "validator" {
-		hasVested, err := nsi.LitionContractClient.IsAllowedToValidate(accPubKey)
-		if err != nil {
-			log.Error("GetGenesisHandler IsAllowedToValidate err: ", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("Internal error"))
-			return
-		}
+	userDetails, err := nsi.LitionContractClient.GetUserDetails(accPubKey)
+	if err != nil {
+		log.Error("GetNmcAddress GetUserDetails err: ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Internal error"))
+	}
 
-		if hasVested == false {
+	if role == "validator" {
+		if userDetails.Vesting.Uint64() == 0 {
 			log.Info("Access denied. Acc has not vested.")
 			w.WriteHeader(http.StatusForbidden)
 			w.Write([]byte("Access denied"))
 			return
 		}
 	} else if role == "non-validator" {
-		hasDeposited, err := nsi.LitionContractClient.IsAllowedToTransact(accPubKey)
-		if err != nil {
-			log.Error("GetGenesisHandler IsAllowedToTransact err: ", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("Internal error"))
-			return
-		}
-
-		if hasDeposited == false {
+		if userDetails.Whitelisted == false {
 			log.Info("Access denied. Acc has not deposited.")
 			w.WriteHeader(http.StatusForbidden)
 			w.Write([]byte("Access denied"))

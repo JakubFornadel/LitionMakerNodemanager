@@ -234,7 +234,7 @@ type NodeServiceImpl struct {
 	NodeAccAddress       string
 	MiningRegisteredChan chan struct{}
 	MiningRegistered     bool
-	NotaryPeriod         uint64
+	NotaryPeriod         int64
 	Nms                  *contractclient.NetworkMapContractClient
 	LastInternalNotary   int64
 	LastMainetNotary     int64
@@ -304,7 +304,7 @@ func NewNodeServiceImpl(url string, litionContractClient *litionScClient.Contrac
 	if err != nil {
 		return nil, err
 	}
-	neNodeServiceImpl.NotaryPeriod = chainStaticDetails.NotaryPeriod.Uint64()
+	neNodeServiceImpl.NotaryPeriod = chainStaticDetails.NotaryPeriod.Int64()
 
 	neNodeServiceImpl.Url = url
 	neNodeServiceImpl.LitionContractClient = litionContractClient
@@ -1573,10 +1573,7 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 		nsi.LastInternalNotary = lastNotary
 	}
 
-	// TODO: uncomment this for mainnet
-	//notaryPeriod := nsi.NotaryPeriod
-
-	notaryPeriod := int64(59)
+	notaryPeriod := nsi.NotaryPeriod
 
 	multiplier := (blockNumber - lastNotary) / notaryPeriod
 	notary := lastNotary + notaryPeriod*multiplier
@@ -1687,7 +1684,11 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 						"LargestTx:\n" + strconv.FormatInt(int64(stats.MaxGas), 10) + "\n"
 					fmt.Printf(sentData)
 
-					log.Info("v: ", v)
+					fmt.Printf("v\n")
+					for _, vGet := range v {
+						fmt.Printf(strconv.Itoa(int(vGet)))
+						fmt.Printf(", ")
+					}
 
 					fmt.Printf("r\n")
 					for _, rGet := range r {

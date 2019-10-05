@@ -122,6 +122,7 @@ func main() {
 		nodeService.ABICrawler(*nodeUrl)
 
 		if *miningFlag == true {
+			// TODO: change to 5 minutes for mainnet
 			notaryTicker := time.NewTicker(60 * time.Second)
 			go func() {
 				privateKey, err := crypto.HexToECDSA(*privateKeyStr)

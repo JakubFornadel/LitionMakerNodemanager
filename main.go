@@ -69,6 +69,7 @@ func main() {
 		if *miningFlag == true {
 			// Start standalone event listeners
 			go contractClient.Start_accMiningEventListener(nodeService.ProposeValidator)
+			go contractClient.Start_notaryEventListener(nodeService.UpdateLastMainnetNotary)
 
 			userDetails, err := contractClient.GetUserDetails(pubKey)
 			if err != nil {
@@ -277,6 +278,12 @@ func InitLitionContractClient(
 		err = client.InitAccMiningEventListener()
 		if err != nil {
 			log.Error("Unable to init 'StartMining' event listeners")
+			return
+		}
+
+		err = client.InitNotaryEventListener()
+		if err != nil {
+			log.Error("Unable to init 'Notary' event listeners")
 			return
 		}
 	}

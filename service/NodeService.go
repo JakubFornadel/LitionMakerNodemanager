@@ -1589,7 +1589,6 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 	}
 
 	//// Internal SC part ////
-
 	stats := ethClient.GetStatistics(fmt.Sprint("0x", strconv.FormatInt(nsi.LastMainnetNotaryBlock+1, 16)), notaryEndBlockHex)
 
 	// No transactions present, do no call notary

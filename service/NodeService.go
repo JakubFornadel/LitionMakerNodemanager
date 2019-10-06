@@ -237,8 +237,9 @@ type NodeServiceImpl struct {
 	NotaryPeriod             int64
 	Nms                      *contractclient.NetworkMapContractClient
 	LastInternalNotary       int64
-	LastMainnetNotaryBlock   int64
+	LastLitionScNotaryBlock  int64
 	LastProcessedNotaryBlock int64
+	NotaryInvokedCounter     uint32
 }
 
 type ChartInfo struct {
@@ -314,8 +315,9 @@ func NewNodeServiceImpl(url string, litionContractClient *litionScClient.Contrac
 	neNodeServiceImpl.MiningRegistered = true
 	neNodeServiceImpl.MiningRegisteredChan = nil
 	neNodeServiceImpl.LastInternalNotary = 0
-	neNodeServiceImpl.LastMainnetNotaryBlock = 0
+	neNodeServiceImpl.LastLitionScNotaryBlock = 0
 	neNodeServiceImpl.LastProcessedNotaryBlock = 0
+	neNodeServiceImpl.NotaryInvokedCounter = 0
 
 	return neNodeServiceImpl, nil
 }
@@ -1529,7 +1531,7 @@ func (nsi *NodeServiceImpl) UpdateLastMainnetNotary(event *litionScClient.Lition
 	log.Info("New Mainnet Notary. Block: ", event.NotaryBlock.Uint64(), ", confirmed: ", event.Confirmed)
 
 	if event.Confirmed == true {
-		nsi.LastMainnetNotaryBlock = event.NotaryBlock.Int64()
+		nsi.LastLitionScNotaryBlock = event.NotaryBlock.Int64()
 	}
 }
 
@@ -1568,15 +1570,33 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 			"and you will be automatically voted as validator by other nodes.")
 		return
 	}
+	actblockNumber := util.HexStringtoInt64(ethClient.BlockNumber())
 
-	if nsi.LastInternalNotary < nsi.LastMainnetNotaryBlock {
-		nsi.LastInternalNotary = nsi.LastMainnetNotaryBlock
+	// Check every 60 minutes if there is different last notary block based on GetChainDynamicDetails() getter
+	// vs nsi.LastLitionScNotaryBlock which is updated by listener, if it is different, listener probably stopped working
+	nsi.NotaryInvokedCounter++
+	if nsi.NotaryInvokedCounter%60 == 0 {
+		nsi.NotaryInvokedCounter = 0
+
+		chainDynamicDetails, err := nsi.LitionContractClient.GetChainDynamicDetails()
+		if err == nil {
+			if chainDynamicDetails.LastNotaryBlock.Int64() > nsi.LastLitionScNotaryBlock {
+
+				log.Warn("Last notary block based on GetChainDynamicDetails() getter is bigger than the one, which is updated by listener (listener propably stopped working")
+				nsi.LastLitionScNotaryBlock = chainDynamicDetails.LastNotaryBlock.Int64()
+			}
+		} else {
+			log.Error("Unabled to check LastMainnetNotaryBlock based on GetChainDynamicDetails(). Err: ", err)
+		}
 	}
 
-	actblockNumber := util.HexStringtoInt64(ethClient.BlockNumber())
-	multiplier := (actblockNumber - nsi.LastMainnetNotaryBlock) / nsi.NotaryPeriod
+	if nsi.LastInternalNotary < nsi.LastLitionScNotaryBlock {
+		nsi.LastInternalNotary = nsi.LastLitionScNotaryBlock
+	}
 
-	notaryEndBlock := nsi.LastMainnetNotaryBlock + nsi.NotaryPeriod*multiplier
+	multiplier := (actblockNumber - nsi.LastLitionScNotaryBlock) / nsi.NotaryPeriod
+
+	notaryEndBlock := nsi.LastLitionScNotaryBlock + nsi.NotaryPeriod*multiplier
 	notaryEndBlockHex := fmt.Sprint("0x", strconv.FormatInt(notaryEndBlock, 16))
 
 	// Do not process notary if there is not enough blocks since the last processed notary
@@ -1589,7 +1609,7 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 	}
 
 	//// Internal SC part ////
-	stats := ethClient.GetStatistics(fmt.Sprint("0x", strconv.FormatInt(nsi.LastMainnetNotaryBlock+1, 16)), notaryEndBlockHex)
+	stats := ethClient.GetStatistics(fmt.Sprint("0x", strconv.FormatInt(nsi.LastLitionScNotaryBlock+1, 16)), notaryEndBlockHex)
 
 	// No transactions present, do no call notary
 	if len(stats.Users) == 0 {
@@ -1646,7 +1666,7 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 				r = append(r, sig.R)
 			}
 
-			tx, err := nsi.LitionContractClient.Notary(bind.NewKeyedTransactor(privateKey), new(big.Int).SetInt64(nsi.LastMainnetNotaryBlock+1), new(big.Int).SetInt64(notaryEndBlock),
+			tx, err := nsi.LitionContractClient.Notary(bind.NewKeyedTransactor(privateKey), new(big.Int).SetInt64(nsi.LastLitionScNotaryBlock+1), new(big.Int).SetInt64(notaryEndBlock),
 				stats.Validators, stats.BlocksMined, stats.Users, stats.GasConsumptions, stats.MaxGas, v, r, s)
 			if err == nil {
 				log.Info("Notary successfully sent, tx Hash: ", tx.Hash().String())
@@ -1654,7 +1674,7 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 				nsi.LastProcessedNotaryBlock = notaryEndBlock
 			} else {
 				//reset notary in case of error (maybe not enough staking)
-				nsi.LastProcessedNotaryBlock = nsi.LastMainnetNotaryBlock
+				nsi.LastProcessedNotaryBlock = nsi.LastLitionScNotaryBlock
 
 				log.Error("Notary failed: ", err)
 
@@ -1679,7 +1699,7 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 				usersData += "]"
 				gasData += "]"
 
-				sentData := "StartBlock:\n" + strconv.FormatInt(nsi.LastMainnetNotaryBlock+1, 10) + "\n" +
+				sentData := "StartBlock:\n" + strconv.FormatInt(nsi.LastLitionScNotaryBlock+1, 10) + "\n" +
 					"EndBlock:\n" + strconv.FormatInt(notaryEndBlock, 10) + "\n" +
 					"Miners:\n" + minersData + "\n" +
 					"BlocksMined:\n" + blocksData + "\n" +

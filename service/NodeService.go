@@ -1528,11 +1528,8 @@ func (nsi *NodeServiceImpl) ProposeValidator(event *litionScClient.LitionScClien
 }
 
 func (nsi *NodeServiceImpl) UpdateLastMainnetNotary(event *litionScClient.LitionScClientNotary) {
-	log.Info("New Mainnet Notary. Block: ", event.NotaryBlock.Uint64(), ", confirmed: ", event.Confirmed)
-
-	if event.Confirmed == true {
-		nsi.LastLitionScNotaryBlock = event.NotaryBlock.Int64()
-	}
+	log.Info("New Mainnet Notary. Block: ", event.LastBlock.Uint64())
+	nsi.LastLitionScNotaryBlock = event.LastBlock.Int64()
 }
 
 func (nsi *NodeServiceImpl) UnvoteValidatorInternal(validatorAddress string) {

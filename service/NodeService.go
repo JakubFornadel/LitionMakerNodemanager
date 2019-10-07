@@ -1572,10 +1572,10 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 	}
 	actblockNumber := util.HexStringtoInt64(ethClient.BlockNumber())
 
-	// Check every 60 minutes if there is different last notary block based on GetChainDynamicDetails() getter
+	// Check every 30 minutes if there is different last notary block based on GetChainDynamicDetails() getter
 	// vs nsi.LastLitionScNotaryBlock which is updated by listener, if it is different, listener probably stopped working
 	nsi.NotaryInvokedCounter++
-	if nsi.NotaryInvokedCounter%60 == 0 {
+	if nsi.NotaryInvokedCounter%30 == 0 {
 		nsi.NotaryInvokedCounter = 0
 
 		chainDynamicDetails, err := nsi.LitionContractClient.GetChainDynamicDetails()
@@ -1586,7 +1586,7 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 				nsi.LastLitionScNotaryBlock = chainDynamicDetails.LastNotaryBlock.Int64()
 			}
 		} else {
-			log.Error("Unabled to check LastMainnetNotaryBlock based on GetChainDynamicDetails(). Err: ", err)
+			log.Error("Unable to check LastMainnetNotaryBlock based on GetChainDynamicDetails(). Err: ", err)
 		}
 	}
 

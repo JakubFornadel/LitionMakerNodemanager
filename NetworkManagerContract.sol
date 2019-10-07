@@ -66,7 +66,7 @@ contract NetworkManagerContract {
 
     function get_signature_hash_from_notary(uint256 notary_block, address[] memory miners,
                                   uint32[] memory blocks_mined, address[] memory users,
-                                  uint32[] memory user_gas, uint32 largest_tx)
+                                  uint64[] memory user_gas, uint64 largest_tx)
                                       public pure returns (bytes32) {
        return keccak256(abi.encodePacked(notary_block, miners, blocks_mined, users, user_gas, largest_tx));
     }

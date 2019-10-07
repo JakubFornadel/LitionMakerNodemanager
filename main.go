@@ -48,7 +48,10 @@ func main() {
 	}
 
 	router := mux.NewRouter()
-	nodeService := service.NodeServiceImpl{*nodeUrl, contractClient, pubKey, nil, true, &contractclient.NetworkMapContractClient{client.EthClient{*nodeUrl}, auth, nil}, 0, 0}
+	nodeService, err := service.NewNodeServiceImpl(*nodeUrl, contractClient, pubKey, &contractclient.NetworkMapContractClient{client.EthClient{*nodeUrl}, auth, nil})
+	if err != nil {
+		log.Fatal("NewNodeServiceImpl init failed. Error: ", err)
+	}
 
 	ticker := time.NewTicker(86400 * time.Second)
 	go func() {
@@ -66,13 +69,14 @@ func main() {
 		if *miningFlag == true {
 			// Start standalone event listeners
 			go contractClient.Start_accMiningEventListener(nodeService.ProposeValidator)
+			go contractClient.Start_notaryEventListener(nodeService.UpdateLastMainnetNotary)
 
-			isActiveValidator, err := contractClient.IsActiveValidator(pubKey)
+			userDetails, err := contractClient.GetUserDetails(pubKey)
 			if err != nil {
-				log.Fatal("Unable to call IsActiveValidator on SC. Err: ", err)
+				log.Fatal("Unable to call GetUserDetails on SC. Err: ", err)
 			}
 
-			if isActiveValidator == false {
+			if userDetails.Mining == false {
 				// Let lition SC know that this node wants to start mining
 				tx, err := contractClient.StartMining(auth)
 				if err != nil {
@@ -87,31 +91,29 @@ func main() {
 					ethScanURL = "https://etherscan.io/tx/" + tx.Hash().String()
 				}
 
-				log.Info("You can check status of the StartMining transaction here: " + ethScanURL)
+				nodeService.MiningRegistered = false
+				nodeService.MiningRegisteredChan = make(chan struct{})
 
-				// nodeService.MiningRegistered = false
-				// nodeService.MiningRegisteredChan = make(chan struct{})
+				terminalMsg :=
+					"\n*****************************************************************************\n" +
+						"**** Waiting for StartMinig to be registered in Lition Smart Contract... ****\n" +
+						"*****************************************************************************\n\n" +
 
-				// terminalMsg :=
-				// 	"\n*****************************************************************************\n" +
-				// 		"**** Waiting for StartMinig to be registered in Lition Smart Contract... ****\n" +
-				// 		"*****************************************************************************\n\n" +
+						"It might take from few seconds to few hours(edge case when ethereum network is halted). " +
+						"You can check status of the StartMining transaction here:\n" + ethScanURL + "\n\n" +
+						"In case it takes too long and you need to speed up things, you can manually call StartMining method with " +
+						"higher gas price through our SideChain Manager here:\nhttps://lition.io/sidechainmanager\n\n" +
+						"Do not shut down this process in the meantime.\n\n" +
+						"*****************************************************************************\n\n"
+				fmt.Printf(terminalMsg)
 
-				// 		"It might take from few seconds to few hours(edge case when ethereum network is halted). " +
-				// 		"You can check status of the StartMining transaction here:\n" + ethScanURL + "\n\n" +
-				// 		"In case it takes too long and you need to speed up things, you can manually call StartMining method with " +
-				// 		"higher gas price through our SideChain Manager here:\nhttps://lition.io/sidechainmanager\n\n" +
-				// 		"Do not shut down this process in the meantime.\n\n" +
-				// 		"*****************************************************************************\n\n"
-				// fmt.Printf(terminalMsg)
+				// Wait for StartMining to be processed so user can register his node without being rejected by nodes
+				// Validators can send free tx only once per 5 seconds and they must be registered in SC as active validators
+				<-nodeService.MiningRegisteredChan
 
-				// // Wait for StartMining to be processed so user can register his node without being rejected by nodes
-				// // Validators can send free tx only once per 5 seconds and they must be registered in SC as active validators
-				// <-nodeService.MiningRegisteredChan
-
-				// // Wait a few seconds so nodes register this account as active validator and do not reject it's internal SC transactions
-				// time.Sleep(5 * time.Second)
-				// log.Info("StartMining successfully registered")
+				// Wait a few seconds so nodes register this account as active validator and do not reject it's internal SC transactions
+				time.Sleep(5 * time.Second)
+				log.Info("StartMining successfully registered")
 			}
 		}
 
@@ -121,7 +123,7 @@ func main() {
 		nodeService.ABICrawler(*nodeUrl)
 
 		if *miningFlag == true {
-			notaryTicker := time.NewTicker(30 * time.Second)
+			notaryTicker := time.NewTicker(60 * time.Second)
 			go func() {
 				privateKey, err := crypto.HexToECDSA(*privateKeyStr)
 				if err != nil {
@@ -191,22 +193,25 @@ func main() {
 	<-c
 
 	if *miningFlag == true {
-		isActiveValidator, err := contractClient.IsActiveValidator(pubKey)
-		if err != nil {
+		isActiveValidator := true
+
+		userDetails, err := contractClient.GetUserDetails(pubKey)
+		if err == nil {
+			isActiveValidator = userDetails.Mining
+		} else {
 			log.Error("Unable to call IsActiveValidator on SC during shutdown. Unvote validator as he was active. Err: ", err)
-			isActiveValidator = true
 		}
 
 		if isActiveValidator == true {
+			// Unvote itself
+			nodeService.UnvoteValidatorInternal(pubKey)
+
 			// Stop mining
 			tx, err := contractClient.StopMining(auth)
 			if err != nil {
 				log.Fatal("Unable to stop mining. Err: ", err)
 			}
 			log.Info("StoptMining tx sent. Hash: ", tx.Hash().String())
-
-			// Unvote itself
-			//nodeService.UnvoteValidatorInternal(pubKey)
 		}
 	}
 
@@ -272,6 +277,12 @@ func InitLitionContractClient(
 		err = client.InitAccMiningEventListener()
 		if err != nil {
 			log.Error("Unable to init 'StartMining' event listeners")
+			return
+		}
+
+		err = client.InitNotaryEventListener()
+		if err != nil {
+			log.Error("Unable to init 'Notary' event listeners")
 			return
 		}
 	}

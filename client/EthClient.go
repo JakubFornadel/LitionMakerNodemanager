@@ -130,10 +130,22 @@ type EthClient struct {
 	Url string
 }
 
+// AccountStats
+// in case it refers to validators, value means number of mined blocks
+// in case it refers to users, value means tootal users's gas consumption
+type AccountStats struct {
+	Account common.Address
+	Value   uint64
+}
+
 type IstanbulStats struct {
-	Validated map[common.Address]uint32 `json:"validated"`
-	GasUsed   map[common.Address]uint32 `json:"gas_used"`
-	MaxGas    uint32                    `json:"max_gas_used"`
+	Validators  []common.Address `json:"validators"`
+	BlocksMined []uint32         `json:"blocks_mined"`
+
+	Users           []common.Address `json:"users"`
+	GasConsumptions []uint64         `json:"gas_consumptions"`
+
+	MaxGas uint64 `json:"max_gas_used"`
 }
 
 func (ec *EthClient) GetTransactionByHash(txNo string) TransactionDetailsResponse {

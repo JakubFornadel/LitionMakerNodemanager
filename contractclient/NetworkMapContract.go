@@ -22,7 +22,7 @@ type NodeDetails struct {
 type NetworkMapContractClient struct {
 	client.EthClient
 	Auth *bind.TransactOpts
-	Ic   *internalContract.Lition
+	Ic   *internalContract.ScClient
 }
 
 type GetNodeDetailsParam int
@@ -120,7 +120,7 @@ func (nmc *NetworkMapContractClient) UpdateNode(name string, role string, public
 	return tx.Hash().String()
 }
 
-func (nmc *NetworkMapContractClient) GetSignatureHashFromNotary(notary_block int64, miners []common.Address, blocks_mined []uint32, users []common.Address, user_gas []uint32, largest_tx uint32) []byte {
+func (nmc *NetworkMapContractClient) GetSignatureHashFromNotary(notary_block int64, miners []common.Address, blocks_mined []uint32, users []common.Address, user_gas []uint64, largest_tx uint64) []byte {
 	if nmc.Ic == nil {
 		return []byte{}
 	}

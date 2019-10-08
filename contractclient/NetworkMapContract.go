@@ -1,6 +1,7 @@
 package contractclient
 
 import (
+	"errors"
 	"math/big"
 
 	log "github.com/sirupsen/logrus"
@@ -9,6 +10,7 @@ import (
 	internalContract "gitlab.com/lition/lition-maker-nodemanager/contractclient/internalcontract"
 	"gitlab.com/lition/lition/accounts/abi/bind"
 	"gitlab.com/lition/lition/common"
+	"gitlab.com/lition/lition/core/types"
 )
 
 type NodeDetails struct {
@@ -120,50 +122,34 @@ func (nmc *NetworkMapContractClient) UpdateNode(name string, role string, public
 	return tx.Hash().String()
 }
 
-func (nmc *NetworkMapContractClient) GetSignatureHashFromNotary(notary_block int64, miners []common.Address, blocks_mined []uint32, users []common.Address, user_gas []uint64, largest_tx uint64) []byte {
+func (nmc *NetworkMapContractClient) GetSignatureHashFromNotary(notary_block int64, miners []common.Address, blocks_mined []uint32, users []common.Address, user_gas []uint64, largest_tx uint64) ([32]byte, error) {
 	if nmc.Ic == nil {
-		return []byte{}
+		return [32]byte{}, errors.New("NetworkMapContractClient internalContract client not provided")
 	}
-	response, err := nmc.Ic.GetSignatureHashFromNotary(nil, big.NewInt(notary_block), miners, blocks_mined, users, user_gas, largest_tx)
-	if err != nil {
-		log.Error("GetSignatureHashFromNotary: ", err)
-		return []byte{}
-	}
-	return response[:]
+	return nmc.Ic.GetSignatureHashFromNotary(nil, big.NewInt(notary_block), miners, blocks_mined, users, user_gas, largest_tx)
 }
 
-func (nmc *NetworkMapContractClient) GetSignatures(notary_block int64, index int) Signature {
+func (nmc *NetworkMapContractClient) GetSignatures(notary_block int64, index int) (Signature, error) {
 	if nmc.Ic == nil {
-		return Signature{}
+		return Signature{}, errors.New("NetworkMapContractClient internalContract client not provided")
 	}
-	result, err := nmc.Ic.GetSignatures(nil, big.NewInt(notary_block), big.NewInt(int64(index)))
-	if err != nil {
-		log.Error("GetSignatures: ", err)
-		return Signature{}
-	}
-	return result
+	return nmc.Ic.GetSignatures(nil, big.NewInt(notary_block), big.NewInt(int64(index)))
 }
 
-func (nmc *NetworkMapContractClient) GetSignaturesCount(notary_block int64) int {
+func (nmc *NetworkMapContractClient) GetSignaturesCount(notary_block int64) (*big.Int, error) {
 	if nmc.Ic == nil {
-		return 0
+		return nil, errors.New("NetworkMapContractClient internalContract client not provided")
 	}
-	result, err := nmc.Ic.GetSignaturesCount(nil, big.NewInt(notary_block))
-	if err != nil {
-		log.Error("GetSignatures: ", err)
-		return 0
-	}
-	return int(result.Int64())
+
+	return nmc.Ic.GetSignaturesCount(nil, big.NewInt(notary_block))
 }
 
-func (nmc *NetworkMapContractClient) StoreSignature(notary_block int64, sig Signature) {
+func (nmc *NetworkMapContractClient) StoreSignature(notary_block int64, sig Signature) (*types.Transaction, error) {
 	if nmc.Ic == nil {
-		return
+		return nil, errors.New("NetworkMapContractClient internalContract client not provided")
 	}
-	_, err := nmc.Ic.StoreSignature(nmc.Auth, big.NewInt(notary_block), sig.V, sig.R, sig.S)
-	if err != nil {
-		log.Error("StoreSignature: ", err)
-	}
+
+	return nmc.Ic.StoreSignature(nmc.Auth, big.NewInt(notary_block), sig.V, sig.R, sig.S)
 }
 
 type DeployContractHandler struct {
@@ -171,6 +157,5 @@ type DeployContractHandler struct {
 }
 
 func (d DeployContractHandler) Encode() string {
-
 	return d.binary
 }

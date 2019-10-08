@@ -1528,7 +1528,7 @@ func (nsi *NodeServiceImpl) ProposeValidator(event *litionScClient.LitionScClien
 }
 
 func (nsi *NodeServiceImpl) UpdateLastMainnetNotary(event *litionScClient.LitionScClientNotary) {
-	log.Info("New Mainnet Notary. Block: ", event.LastBlock.Uint64())
+	log.Info("New Mainnet Notary. LastProccesedBlock: ", event.LastBlock.Uint64(), ", blocksProcessedCount: ", event.BlocksProcessed.Int64())
 	nsi.LastLitionScNotaryBlock = event.LastBlock.Int64()
 }
 

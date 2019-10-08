@@ -1551,8 +1551,8 @@ func printHex(b []byte) {
 	fmt.Printf("\"0x%s\",", dst)
 }
 
-func logDebugNotaryData(startBlock int64, endBlock int64) {
-	log.Debug("Notary Debug: StartBlock: ", startBlock, ", notaryEndBlock: ", endBlock)
+func logDebugNotaryData(actBlock int64, startBlock int64, endBlock int64) {
+	log.Debug("Notary Debug: BC actBlock: ", actBlock, ", notaryStartBlock: ", startBlock, ", notaryEndBlock: ", endBlock)
 }
 
 func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
@@ -1618,7 +1618,7 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 		// Show debug message only every 20 minutes
 		if nsi.NotaryInvokedCounter%20 == 0 {
 			log.Debug("Notary periodic check: Users consumptions from node statistics is empty")
-			logDebugNotaryData(nsi.LastLitionScNotaryBlock+1, notaryEndBlock)
+			logDebugNotaryData(actblockNumber, nsi.LastLitionScNotaryBlock+1, notaryEndBlock)
 		}
 		return
 	}
@@ -1628,7 +1628,7 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 		// Show debug message only every 20 minutes
 		if nsi.NotaryInvokedCounter%20 == 0 {
 			log.Debug("Notary periodic check: Miners from node statistics is empty")
-			logDebugNotaryData(nsi.LastLitionScNotaryBlock+1, notaryEndBlock)
+			logDebugNotaryData(actblockNumber, nsi.LastLitionScNotaryBlock+1, notaryEndBlock)
 		}
 		return
 	}
@@ -1638,7 +1638,7 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 		// Show debug message only every 20 minutes
 		if nsi.NotaryInvokedCounter%20 == 0 {
 			log.Debug("Notary periodic check: MaxGas from node statistics == 0")
-			logDebugNotaryData(nsi.LastLitionScNotaryBlock+1, notaryEndBlock)
+			logDebugNotaryData(actblockNumber, nsi.LastLitionScNotaryBlock+1, notaryEndBlock)
 		}
 		return
 	}
@@ -1647,21 +1647,21 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 		hashToSign, err := nsi.Nms.GetSignatureHashFromNotary(notaryEndBlock, stats.Validators, stats.BlocksMined, stats.Users, stats.GasConsumptions, stats.MaxGas)
 		if err != nil {
 			log.Error("Notary GetSignatureHashFromNotary err: ", err)
-			logDebugNotaryData(nsi.LastLitionScNotaryBlock+1, notaryEndBlock)
+			logDebugNotaryData(actblockNumber, nsi.LastLitionScNotaryBlock+1, notaryEndBlock)
 			return
 		}
 
 		signature, err := crypto.Sign(hashToSign[:], privateKey)
 		if err != nil {
 			log.Error("Notary crypto.Sign(hashToSign[:], privateKey) err: ", err)
-			logDebugNotaryData(nsi.LastLitionScNotaryBlock+1, notaryEndBlock)
+			logDebugNotaryData(actblockNumber, nsi.LastLitionScNotaryBlock+1, notaryEndBlock)
 			return
 		}
 
 		_, err = nsi.Nms.StoreSignature(notaryEndBlock, contractclient.Signature{uint8(int(signature[64])) + 27, *byte32(signature[:32]), *byte32(signature[32:64])})
 		if err != nil {
 			log.Error("Notary StoreSignature err: ", err)
-			logDebugNotaryData(nsi.LastLitionScNotaryBlock+1, notaryEndBlock)
+			logDebugNotaryData(actblockNumber, nsi.LastLitionScNotaryBlock+1, notaryEndBlock)
 			return
 		}
 
@@ -1671,7 +1671,7 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 	validators := ethClient.GetValidators(notaryEndBlockHex)
 	if len(validators) < 1 {
 		log.Error("Notary periodic check: there are no validators on node level")
-		logDebugNotaryData(nsi.LastLitionScNotaryBlock+1, notaryEndBlock)
+		logDebugNotaryData(actblockNumber, nsi.LastLitionScNotaryBlock+1, notaryEndBlock)
 		return
 	}
 
@@ -1686,7 +1686,7 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 		sigCountBigInt, err := nsi.Nms.GetSignaturesCount(notaryEndBlock)
 		if err != nil {
 			log.Error("Notary GetSignaturesCount err: ", err)
-			logDebugNotaryData(nsi.LastLitionScNotaryBlock+1, notaryEndBlock)
+			logDebugNotaryData(actblockNumber, nsi.LastLitionScNotaryBlock+1, notaryEndBlock)
 			return
 		}
 		sigCount := int(sigCountBigInt.Int64())
@@ -1699,7 +1699,7 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 				sig, err := nsi.Nms.GetSignatures(notaryEndBlock, i)
 				if err != nil {
 					log.Error("Notary GetSignaturesCount err: ", err)
-					logDebugNotaryData(nsi.LastLitionScNotaryBlock+1, notaryEndBlock)
+					logDebugNotaryData(actblockNumber, nsi.LastLitionScNotaryBlock+1, notaryEndBlock)
 					continue
 				}
 
@@ -1719,7 +1719,7 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 				nsi.LastProcessedNotaryBlock = nsi.LastLitionScNotaryBlock
 
 				log.Error("Notary failed: ", err)
-				logDebugNotaryData(nsi.LastLitionScNotaryBlock+1, notaryEndBlock)
+				logDebugNotaryData(actblockNumber, nsi.LastLitionScNotaryBlock+1, notaryEndBlock)
 
 				// Prints notary data
 				log.Info("Sent Data: ")

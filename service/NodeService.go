@@ -1676,7 +1676,7 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 	}
 
 	//// External SC part ////
-	if validators[int(notaryEndBlock)%len(validators)] == crypto.PubkeyToAddress(privateKey.PublicKey) {
+	if validators[int(notaryEndBlock/nsi.NotaryPeriod)%len(validators)] == crypto.PubkeyToAddress(privateKey.PublicKey) {
 		nodeRequired := len(validators)
 		// if there is less or same number of nodes required by BFT (4), then you need all signatures
 		if nodeRequired > 4 {

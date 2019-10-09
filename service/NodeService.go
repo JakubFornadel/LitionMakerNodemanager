@@ -1528,11 +1528,8 @@ func (nsi *NodeServiceImpl) ProposeValidator(event *litionScClient.LitionScClien
 }
 
 func (nsi *NodeServiceImpl) UpdateLastMainnetNotary(event *litionScClient.LitionScClientNotary) {
-	log.Info("New Mainnet Notary. Block: ", event.NotaryBlock.Uint64(), ", confirmed: ", event.Confirmed)
-
-	if event.Confirmed == true {
-		nsi.LastLitionScNotaryBlock = event.NotaryBlock.Int64()
-	}
+	log.Info("New Mainnet Notary. LastProccesedBlock: ", event.LastBlock.Uint64(), ", blocksProcessedCount: ", event.BlocksProcessed.Int64())
+	nsi.LastLitionScNotaryBlock = event.LastBlock.Int64()
 }
 
 func (nsi *NodeServiceImpl) UnvoteValidatorInternal(validatorAddress string) {
@@ -1554,6 +1551,10 @@ func printHex(b []byte) {
 	fmt.Printf("\"0x%s\",", dst)
 }
 
+func logDebugNotaryData(actBlock int64, startBlock int64, endBlock int64) {
+	log.Debug("Notary Debug: BC actBlock: ", actBlock, ", notaryStartBlock: ", startBlock, ", notaryEndBlock: ", endBlock)
+}
+
 func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 	ethClient := client.EthClient{nsi.Url}
 
@@ -1564,13 +1565,14 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 		}
 	}
 
+	actblockNumber := util.HexStringtoInt64(ethClient.BlockNumber())
+
 	if iAmValidator == false {
-		log.Warn("You are not registred as validator on geth level. Please control this by attaching to the rpc port of your node and call istanbul.GetValidators(). ",
+		log.Warn("As of block: ", actblockNumber, " you are not registred as validator on geth level. Please control this by attaching to the rpc port of your node and call istanbul.GetValidators(). ",
 			"In case your node is running for mote than 10 minutes and you are not voted as validator, please call StartMining on Lition SicechainManger here: https://www.lition.io/sidechainmanager/ ",
 			"and you will be automatically voted as validator by other nodes.")
 		return
 	}
-	actblockNumber := util.HexStringtoInt64(ethClient.BlockNumber())
 
 	// Check every 30 minutes if there is different last notary block based on GetChainDynamicDetails() getter
 	// vs nsi.LastLitionScNotaryBlock which is updated by listener, if it is different, listener probably stopped working
@@ -1613,54 +1615,94 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 
 	// No transactions present, do no call notary
 	if len(stats.Users) == 0 {
-		log.Debug("Notary not sent, Users consumptions from node statistics is empty")
+		// Show debug message only every 20 minutes
+		if nsi.NotaryInvokedCounter%20 == 0 {
+			log.Debug("Notary periodic check: Users consumptions from node statistics is empty")
+			logDebugNotaryData(actblockNumber, nsi.LastLitionScNotaryBlock+1, notaryEndBlock)
+		}
 		return
 	}
 
 	// No miners present, do no call notary
 	if len(stats.Validators) == 0 {
-		log.Debug("Notary not sent, Miners from node statistics is empty")
+		// Show debug message only every 20 minutes
+		if nsi.NotaryInvokedCounter%20 == 0 {
+			log.Debug("Notary periodic check: Miners from node statistics is empty")
+			logDebugNotaryData(actblockNumber, nsi.LastLitionScNotaryBlock+1, notaryEndBlock)
+		}
 		return
 	}
 
 	// Invalid max gas provided
 	if stats.MaxGas == 0 {
-		log.Debug("Notary not sent, MaxGas from node statistics == 0")
+		// Show debug message only every 20 minutes
+		if nsi.NotaryInvokedCounter%20 == 0 {
+			log.Debug("Notary periodic check: MaxGas from node statistics == 0")
+			logDebugNotaryData(actblockNumber, nsi.LastLitionScNotaryBlock+1, notaryEndBlock)
+		}
 		return
 	}
 
 	if nsi.LastInternalNotary < notaryEndBlock {
-		hashToSign := nsi.Nms.GetSignatureHashFromNotary(notaryEndBlock, stats.Validators, stats.BlocksMined, stats.Users, stats.GasConsumptions, stats.MaxGas)
-		signature, err := crypto.Sign(hashToSign, privateKey)
+		hashToSign, err := nsi.Nms.GetSignatureHashFromNotary(notaryEndBlock, stats.Validators, stats.BlocksMined, stats.Users, stats.GasConsumptions, stats.MaxGas)
 		if err != nil {
 			log.Error("Notary GetSignatureHashFromNotary err: ", err)
+			logDebugNotaryData(actblockNumber, nsi.LastLitionScNotaryBlock+1, notaryEndBlock)
 			return
 		}
 
-		nsi.Nms.StoreSignature(notaryEndBlock, contractclient.Signature{uint8(int(signature[64])) + 27, *byte32(signature[:32]), *byte32(signature[32:64])})
+		signature, err := crypto.Sign(hashToSign[:], privateKey)
+		if err != nil {
+			log.Error("Notary crypto.Sign(hashToSign[:], privateKey) err: ", err)
+			logDebugNotaryData(actblockNumber, nsi.LastLitionScNotaryBlock+1, notaryEndBlock)
+			return
+		}
+
+		_, err = nsi.Nms.StoreSignature(notaryEndBlock, contractclient.Signature{uint8(int(signature[64])) + 27, *byte32(signature[:32]), *byte32(signature[32:64])})
+		if err != nil {
+			log.Error("Notary StoreSignature err: ", err)
+			logDebugNotaryData(actblockNumber, nsi.LastLitionScNotaryBlock+1, notaryEndBlock)
+			return
+		}
+
 		nsi.LastInternalNotary = notaryEndBlock
 	}
 
 	validators := ethClient.GetValidators(notaryEndBlockHex)
 	if len(validators) < 1 {
-		log.Debug("Notary not sent, there are no validators on node level")
+		log.Error("Notary periodic check: there are no validators on node level")
+		logDebugNotaryData(actblockNumber, nsi.LastLitionScNotaryBlock+1, notaryEndBlock)
 		return
 	}
 
 	//// External SC part ////
-	if validators[int(notaryEndBlock)%len(validators)] == crypto.PubkeyToAddress(privateKey.PublicKey) {
+	if validators[int(notaryEndBlock/nsi.NotaryPeriod)%len(validators)] == crypto.PubkeyToAddress(privateKey.PublicKey) {
 		nodeRequired := len(validators)
 		// if there is less or same number of nodes required by BFT (4), then you need all signatures
 		if nodeRequired > 4 {
 			nodeRequired = 2/3*nodeRequired + 1
 		}
-		sigCount := nsi.Nms.GetSignaturesCount(notaryEndBlock)
+
+		sigCountBigInt, err := nsi.Nms.GetSignaturesCount(notaryEndBlock)
+		if err != nil {
+			log.Error("Notary GetSignaturesCount err: ", err)
+			logDebugNotaryData(actblockNumber, nsi.LastLitionScNotaryBlock+1, notaryEndBlock)
+			return
+		}
+		sigCount := int(sigCountBigInt.Int64())
+
 		if (sigCount >= nodeRequired) && nsi.LastProcessedNotaryBlock != notaryEndBlock {
 			v := make([]uint8, 0, sigCount)
 			s := make([][32]byte, 0, sigCount)
 			r := make([][32]byte, 0, sigCount)
 			for i := 0; i < sigCount; i++ {
-				sig := nsi.Nms.GetSignatures(notaryEndBlock, i)
+				sig, err := nsi.Nms.GetSignatures(notaryEndBlock, i)
+				if err != nil {
+					log.Error("Notary GetSignaturesCount err: ", err)
+					logDebugNotaryData(actblockNumber, nsi.LastLitionScNotaryBlock+1, notaryEndBlock)
+					continue
+				}
+
 				v = append(v, sig.V)
 				s = append(s, sig.S)
 				r = append(r, sig.R)
@@ -1677,8 +1719,9 @@ func (nsi *NodeServiceImpl) Notary(privateKey *ecdsa.PrivateKey) {
 				nsi.LastProcessedNotaryBlock = nsi.LastLitionScNotaryBlock
 
 				log.Error("Notary failed: ", err)
+				logDebugNotaryData(actblockNumber, nsi.LastLitionScNotaryBlock+1, notaryEndBlock)
 
-				// Print notary data
+				// Prints notary data
 				log.Info("Sent Data: ")
 
 				var minersData string = "["

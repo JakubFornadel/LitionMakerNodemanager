@@ -171,11 +171,16 @@ func (ec *EthClient) GetTransactionByHash(txNo string) TransactionDetailsRespons
 
 func (ec *EthClient) ProposeValidator(address string, vote bool) error {
 	rpcClient := jsonrpc.NewClient(ec.Url)
-	_, err := rpcClient.Call("istanbul_propose", address, vote)
+	response, err := rpcClient.Call("istanbul_propose", address, vote)
 
 	if err != nil {
 		fmt.Println(err)
 		return err
+	}
+
+	if response == nil {
+		fmt.Println("No response returned!")
+		return nil
 	}
 
 	return nil
@@ -258,7 +263,14 @@ func (ec *EthClient) PendingTransactions() []TransactionDetailsResponse {
 	if err != nil {
 		fmt.Println(err)
 	}
+
 	pendingTxResponse := []TransactionDetailsResponse{}
+
+	if response == nil {
+		fmt.Println("No response returned!")
+		return pendingTxResponse
+	}
+
 	err = response.GetObject(&pendingTxResponse)
 	if err != nil {
 		fmt.Println(err)
@@ -273,6 +285,12 @@ func (ec *EthClient) AdminPeers() []AdminPeers {
 		fmt.Println(err)
 	}
 	otherPeersResponse := []AdminPeers{}
+
+	if response == nil {
+		fmt.Println("No response returned!")
+		return otherPeersResponse
+	}
+
 	err = response.GetObject(&otherPeersResponse)
 	if err != nil {
 		fmt.Println(err)
@@ -286,7 +304,14 @@ func (ec *EthClient) AdminNodeInfo() AdminInfo {
 	if err != nil {
 		fmt.Println(err)
 	}
+
 	thisAdminInfo := AdminInfo{}
+
+	if response == nil {
+		fmt.Println("No response returned!")
+		return thisAdminInfo
+	}
+
 	err = response.GetObject(&thisAdminInfo)
 	return thisAdminInfo
 }
@@ -297,7 +322,14 @@ func (ec *EthClient) BlockNumber() string {
 	if err != nil {
 		fmt.Println(err)
 	}
+
 	var blockNumber string
+
+	if response == nil {
+		fmt.Println("No response returned!")
+		return blockNumber
+	}
+
 	if err == nil {
 		err = response.GetObject(&blockNumber)
 	}
@@ -314,6 +346,12 @@ func (ec *EthClient) Coinbase() string {
 		fmt.Println(err)
 	}
 	var coinbase string
+
+	if response == nil {
+		fmt.Println("No response returned!")
+		return coinbase
+	}
+
 	if err == nil {
 		err = response.GetObject(&coinbase)
 	}
@@ -338,6 +376,11 @@ func (ec *EthClient) GetTransactionReceipt(txNo string) TransactionReceiptRespon
 		return txResponse
 	}
 
+	if response == nil {
+		fmt.Println("No response returned!")
+		return txResponse
+	}
+
 	err = response.GetObject(&txResponse)
 	if err != nil {
 		fmt.Println(err)
@@ -346,12 +389,10 @@ func (ec *EthClient) GetTransactionReceipt(txNo string) TransactionReceiptRespon
 }
 
 func (ec *EthClient) SendTransaction(param contracthandler.ContractParam, rh contracthandler.RequestHandler) string {
-
 	rpcClient := jsonrpc.NewClient(ec.Url)
 
 	response, err := rpcClient.Call("personal_unlockAccount", param.From, param.Passwd, nil)
 	if err != nil || response.Error != nil {
-
 		fmt.Println(err)
 	}
 
@@ -376,18 +417,20 @@ func (ec *EthClient) SendTransaction(param contracthandler.ContractParam, rh con
 }
 
 func (ec *EthClient) EthCall(param contracthandler.ContractParam, encoder contracthandler.RequestHandler, decoder contracthandler.ResponseHandler) {
-
 	rpcClient := jsonrpc.NewClient(ec.Url)
 
 	p := CallPayload{param.To, encoder.Encode()}
 	response, err := rpcClient.Call("eth_call", p, "latest")
 	if err != nil {
-
 		fmt.Println(err)
 	}
 
-	decoder.Decode(fmt.Sprintf("%v", response.Result)[2:])
+	if response == nil {
+		fmt.Println("No response returned!")
+		return
+	}
 
+	decoder.Decode(fmt.Sprintf("%v", response.Result)[2:])
 }
 
 func (ec *EthClient) DeployContracts(byteCode string, pubKeys []string, private bool) string {
@@ -419,6 +462,12 @@ func (ec *EthClient) NetListening() bool {
 		fmt.Println(err)
 	}
 	var listening bool
+
+	if response == nil {
+		fmt.Println("No response returned!")
+		return listening
+	}
+
 	err = response.GetObject(&listening)
 	if err != nil {
 		fmt.Println(err)
@@ -433,6 +482,12 @@ func (ec *EthClient) GetQuorumPayload(input string) string {
 		fmt.Println(err)
 	}
 	var payload string
+
+	if response == nil {
+		fmt.Println("No response returned!")
+		return payload
+	}
+
 	err = response.GetObject(&payload)
 	if err != nil {
 		fmt.Println(err)
@@ -446,7 +501,14 @@ func (ec *EthClient) GetCode(address string) string {
 	if err != nil {
 		fmt.Println(err)
 	}
+
 	var bytecode string
+
+	if response == nil {
+		fmt.Println("No response returned!")
+		return bytecode
+	}
+
 	err = response.GetObject(&bytecode)
 	if err != nil {
 		fmt.Println(err)
@@ -461,6 +523,11 @@ func (ec *EthClient) CreateAccount(password string) string {
 		fmt.Println(err)
 	}
 	var accountAddress string
+	if response == nil {
+		fmt.Println("No response returned!")
+		return accountAddress
+	}
+
 	err = response.GetObject(&accountAddress)
 	if err != nil {
 		fmt.Println(err)
@@ -475,6 +542,10 @@ func (ec *EthClient) GetAccounts() []string {
 		fmt.Println(err)
 	}
 	var accounts []string
+	if response == nil {
+		fmt.Println("No response returned!")
+		return accounts
+	}
 	err = response.GetObject(&accounts)
 	if err != nil {
 		fmt.Println(err)
@@ -489,6 +560,10 @@ func (ec *EthClient) GetBalance(account string) string {
 		fmt.Println(err)
 	}
 	var balance string
+	if response == nil {
+		fmt.Println("No response returned!")
+		return balance
+	}
 	err = response.GetObject(&balance)
 	if err != nil {
 		fmt.Println(err)

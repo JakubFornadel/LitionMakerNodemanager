@@ -156,6 +156,12 @@ func (ec *EthClient) GetTransactionByHash(txNo string) TransactionDetailsRespons
 		fmt.Println(err)
 	}
 	txResponse := TransactionDetailsResponse{}
+
+	if response == nil {
+		fmt.Println("No response returned!")
+		return txResponse
+	}
+
 	err = response.GetObject(&txResponse)
 	if err != nil {
 		fmt.Println(err)
@@ -186,6 +192,11 @@ func (ec *EthClient) GetValidators(blockNumber string) []common.Address {
 		return txResponse
 	}
 
+	if response == nil {
+		fmt.Println("No response returned!")
+		return txResponse
+	}
+
 	err = response.GetObject(&txResponse)
 
 	if err != nil {
@@ -205,7 +216,13 @@ func (ec *EthClient) GetStatistics(start string, end string) IstanbulStats {
 		return IstanbulStats{}
 	}
 
+	if response == nil {
+		fmt.Println("No response returned!")
+		return IstanbulStats{}
+	}
+
 	txResponse := IstanbulStats{}
+
 	err = response.GetObject(&txResponse)
 	if err != nil {
 		fmt.Println(err)
@@ -216,9 +233,17 @@ func (ec *EthClient) GetStatistics(start string, end string) IstanbulStats {
 func (ec *EthClient) GetBlockByNumber(blockNo string) BlockDetailsResponse {
 	rpcClient := jsonrpc.NewClient(ec.Url)
 	response, err := rpcClient.Call("eth_getBlockByNumber", blockNo, true)
+
 	if err != nil {
 		fmt.Println(err)
+		return BlockDetailsResponse{}
 	}
+
+	if response == nil {
+		fmt.Println("No response returned!")
+		return BlockDetailsResponse{}
+	}
+
 	blockResponse := BlockDetailsResponse{}
 	err = response.GetObject(&blockResponse)
 	if err != nil {
@@ -305,7 +330,14 @@ func (ec *EthClient) GetTransactionReceipt(txNo string) TransactionReceiptRespon
 	if err != nil {
 		fmt.Println(err)
 	}
+
 	txResponse := TransactionReceiptResponse{}
+
+	if response == nil {
+		fmt.Println("No response returned!")
+		return txResponse
+	}
+
 	err = response.GetObject(&txResponse)
 	if err != nil {
 		fmt.Println(err)
